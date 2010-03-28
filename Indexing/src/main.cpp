@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "../include/Indexer.h"
+
 using namespace std;
 
 int processQueries() {
@@ -44,8 +46,15 @@ int processQueries() {
 	return 0;
 }
 
-int indexCollection() {
+int indexCollection(string *collectionDirectory, string *collectionIndexFileName) {
 	cout << "Indexing collection..." << endl;
+
+	Indexer indexer(*collectionDirectory, *collectionIndexFileName);
+	int ret = indexer.index();
+
+	delete collectionDirectory;
+	delete collectionIndexFileName;
+
 	return 0;
 }
 
@@ -62,7 +71,7 @@ int main(int argc, char **argv) {
 			exit(processQueries());
 
 		} else if (mode == 2) {
-			exit(indexCollection());
+			exit(indexCollection(new string(argv[2]), new string(argv[3])));
 
 		} else {
 			cerr << "|ERRO|\tInforme um dos modos como parâmetro do programa:";
