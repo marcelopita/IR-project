@@ -28,10 +28,16 @@ int Indexer::index() {
 	int i = 0;
 
 	while (reader->getNextDocument(doc)) {
-		cout << "sadasdasd" << endl;
+		string url = doc.getURL();
+		string text = doc.getText();
+
+		cout << url << endl;
 
 		doc.clear();
 		++i;
+
+		if (i == 200)
+			break;
 	}
 
 	return 0;

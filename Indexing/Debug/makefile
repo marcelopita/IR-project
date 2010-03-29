@@ -44,7 +44,7 @@ all: Indexing
 Indexing: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++ -L/home/pita/IR-project/riCode/src -o"Indexing" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -L/home/pita/IR-project/riCode_old/src -o"Indexing" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

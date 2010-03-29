@@ -32,7 +32,6 @@ private:
 	CollectionReader *reader;
 
 	char **vocabulary;
-
 	char **documents;
 
 };

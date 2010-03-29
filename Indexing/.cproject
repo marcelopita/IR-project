@@ -25,7 +25,7 @@
 <option id="gnu.cpp.compiler.exe.debug.option.optimization.level.1515316355" name="Optimization Level" superClass="gnu.cpp.compiler.exe.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 <option id="gnu.cpp.compiler.exe.debug.option.debugging.level.274458641" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 <option id="gnu.cpp.compiler.option.include.paths.576126617" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode/src"/>
+<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode_old/src"/>
 </option>
 <inputType id="cdt.managedbuild.tool.gnu.cpp.compiler.input.1458883411" superClass="cdt.managedbuild.tool.gnu.cpp.compiler.input"/>
 </tool>
@@ -37,7 +37,7 @@
 <tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1884856883" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug"/>
 <tool id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.197625043" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 <option id="gnu.cpp.link.option.paths.722760018" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode/src"/>
+<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode_old/src"/>
 </option>
 <option id="gnu.cpp.link.option.libs.1817658609" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 <listOptionValue builtIn="false" value="RICPlib"/>

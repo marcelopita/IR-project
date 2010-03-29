@@ -1,0 +1,272 @@
+/*
+ * CollectionWriter class implementation
+ * @author: anisio@dcc.ufmg.br
+ */
+
+#include "CollectionWriter.h"
+
+#include "zlib.h"
+#include <cassert>
+#include <iostream>
+#include <sstream>
+#include <cstdio>
+#include <cstring>
+
+using namespace std;
+using namespace RICPNS;
+
+CollectionWriter::CollectionWriter(const std::string & inputDirectory,
+																	 const std::string & inputIndexFileName,
+																	 const std::string & outputDirectory,
+																	 const std::string & outputIndexFileName,
+																	 const std::string & outputPrefixFileName)
+	: inputDirectory_(inputDirectory),
+		inputIndexFileName_(inputDirectory + '/' + inputIndexFileName),
+		outputDirectory_(outputDirectory),
+		outputIndexFileName_(outputDirectory + '/' + outputIndexFileName),
+		outputPrefixFileName_(outputPrefixFileName),
+		inputIndexFilePtr_(NULL),
+		inputContentFilePtr_(NULL),
+		outputIndexFilePtr_(NULL),
+		outputContentFilePtr_(NULL),
+		outputContentIndex_(0),
+		inputContentFileName_(""),
+		outputCurrentOffset_(0) {
+
+	initialize();
+}
+
+CollectionWriter::~CollectionWriter() {
+	if(inputIndexFilePtr_ != NULL) {
+		fclose(inputIndexFilePtr_);
+	}
+	if(inputContentFilePtr_ != NULL) {
+		fclose(inputContentFilePtr_);
+	}
+	if(outputIndexFilePtr_ != NULL) {
+		fclose(outputIndexFilePtr_);
+	}
+	if(outputContentFilePtr_ != NULL) {
+		fclose(outputContentFilePtr_);
+	}
+}
+
+void CollectionWriter::dump() {
+
+	TUCharPtr docCompressed;
+	size_t compressedFileSize = 0;
+	Document doc;
+
+	while(getNextDocument(doc)) {
+
+		//if(doc.getText().length() <= 51200) {
+		if(!filter(doc)) {
+
+			compressDocument(doc, docCompressed, compressedFileSize);
+		
+			appendDocument(doc, docCompressed, compressedFileSize);
+
+			doc.clear();
+			free(docCompressed);
+
+		}
+	}
+}
+
+bool CollectionWriter::filter(const Document & doc) {
+	bool filterContent = true, filterByText = false, filterByUrl = false;
+
+	if(doc.getText().length() > 33000) {
+		filterByText = true;
+	}
+/*
+	string url = doc.getURL();
+	string::size_type pos;
+	pos = url.rfind(".doc");
+	if(pos == (url.length() - 4)) {
+		cerr << "Url[" << url << "] out" << endl;
+		retUrl = true;
+	}
+*/
+	filterContent = filterByUrl || filterByText;
+
+	return filterContent;
+}
+
+bool CollectionWriter::getNextDocument(Document & doc) {
+
+	char url[MAX_STRING_SIZE], inputContentFileName[MAX_STRING_SIZE];
+	int beginOffset = 0, endOffset = 0;
+	
+	fscanf(inputIndexFilePtr_, "%s %s %i %i", url, inputContentFileName, &beginOffset, &endOffset);
+
+	string tmpContentFileName;
+	if(inputContentFileName_ == "") { // Reading first line in index
+		// Opening content file
+		tmpContentFileName = inputDirectory_ + '/' + string(inputContentFileName);
+		inputContentFileName_ = tmpContentFileName;
+
+		inputContentFilePtr_ = fopen(inputContentFileName_.c_str(), "r");
+		assert(inputContentFilePtr_ != NULL);
+
+		if(DEBUG) { cerr << "File [" << inputContentFileName_ << "] openned." << endl; }
+	}
+
+	tmpContentFileName = inputDirectory_ + '/' + string(inputContentFileName);
+	if(inputContentFileName_ != tmpContentFileName) {
+		fclose(inputContentFilePtr_);
+		inputContentFilePtr_ = NULL;
+		
+		if(DEBUG) { 
+        cerr << "[" << url << "][" << tmpContentFileName << "]" << endl;
+        cerr << "File [" << inputContentFileName_ << "] closed." << endl; 
+    }
+
+		inputContentFileName_ = tmpContentFileName;
+		inputContentFilePtr_ = fopen(inputContentFileName_.c_str(), "r");
+		assert(inputContentFilePtr_ != NULL);
+
+		if(DEBUG) { cerr << "File [" << inputContentFileName_ << "] openned." << endl; }
+	}
+
+	char * content = NULL;
+	int contentSize = endOffset - beginOffset;
+
+	content = new char[contentSize + 1];
+	int nchars = fread(content, sizeof(char), contentSize, inputContentFilePtr_);
+	assert(nchars == contentSize);
+	content[contentSize] = '\0';
+
+	string docStr(content);
+	doc.setText(docStr);
+	string URLStr(url);
+	doc.setURL(URLStr);
+	doc.setLength(contentSize);
+
+	delete[] content;
+
+	if(feof(inputIndexFilePtr_)) {
+		return false;
+	}
+
+	return true;
+}
+
+void CollectionWriter::initialize() {
+	inputIndexFilePtr_ = fopen( inputIndexFileName_.c_str(), "r");
+	assert(inputIndexFilePtr_ != NULL); 
+
+	outputIndexFilePtr_ = fopen( outputIndexFileName_.c_str(), "w");
+	assert(outputIndexFilePtr_ != NULL);
+
+	stringstream outputPrefix;
+	outputPrefix << outputDirectory_ << '/' << outputPrefixFileName_ << outputContentIndex_;
+	outputContentFilePtr_ = fopen( outputPrefix.str().c_str(), "w");
+	assert(outputContentFilePtr_ != NULL);
+
+	if(DEBUG) {
+		cerr << "Index File Name [" << inputIndexFileName_ << "]" << endl;
+		cerr << "Output Index File Name [" << outputIndexFileName_ << "]" << endl;
+		cerr << "Output Content File Name [" << outputPrefix.str() << "]" << endl;
+		cerr << "Initialization OK!" << endl;
+	}
+}
+
+int CollectionWriter::compressDocument(const Document & document, 
+																		   TUCharPtr & to, 
+																			 size_t & size) {
+
+
+	size_t inDocLength = 0, outDocLength = 0;
+	unsigned char * in = NULL;
+	unsigned char * out = NULL;
+
+	inDocLength = document.getText().length();
+	in = new unsigned char[inDocLength];
+	assert(in != NULL);
+
+//	cerr << "[" << document.getURL() << "][" << document.getLength() << "]" << endl;
+//	cerr << "[" << strlen(document.getText().c_str()) << "][" << document.getText().length() << "]" << endl;
+
+	unsigned char * retIn = (unsigned char*)memcpy(in, document.getText().c_str(), inDocLength);
+	assert(retIn == in);
+	outDocLength = (inDocLength * 1.001) + 12; // According to zlib documentation
+	out = new unsigned char[outDocLength];
+
+	int ret = compress2(out, &outDocLength, in, inDocLength, COMPRESSION_LEVEL);
+	
+	if(DEBUG) {
+		switch(ret) {
+			case Z_OK:
+				//cerr << "Z_OK" << endl;
+				break;
+			case Z_MEM_ERROR:
+				cerr << "Z_MEM_ERROR" << endl;
+				break;
+			case Z_BUF_ERROR:
+				cerr << "Z_BUF_ERROR" << endl;
+				break;
+			case Z_DATA_ERROR:
+				cerr << "Z_DATA_ERROR" << endl;
+				break;
+			default:
+				cerr << "Hein?" << endl;
+				break;
+		}
+	}
+	
+
+/*
+	unsigned char * testout = new unsigned char[inDocLength+1];
+	uLong testoutLength = (uLong) inDocLength;
+	uncompress(testout, &testoutLength, out, outDocLength);
+	testout[testoutLength] = '\0';
+	cerr << "[" << testout << "]" << endl;
+	delete[] testout;
+
+*/
+	to = out;
+	size = outDocLength;
+
+	delete[] in;
+
+	return EXIT_SUCCESS;
+}
+
+
+void CollectionWriter::appendDocument(const Document & document,
+											TUCharPtr dPtr, 
+											const size_t & compressedDocSize) {
+
+	size_t newOutputOffset = outputCurrentOffset_ + compressedDocSize;
+	// If output content file reaches MAX_FILE_SIZE
+	if(newOutputOffset >= MAX_FILE_SIZE) {
+		fclose(outputContentFilePtr_);
+		outputContentFilePtr_ = NULL;
+
+		outputContentIndex_++;
+		stringstream tmpOutFile;
+		tmpOutFile << outputDirectory_ << '/' << outputPrefixFileName_ << outputContentIndex_;
+		outputContentFilePtr_ = fopen(tmpOutFile.str().c_str(), "w");
+		assert(outputContentFilePtr_ != NULL);
+
+		outputCurrentOffset_ = 0;
+		newOutputOffset = compressedDocSize;
+		if(DEBUG) { cerr << "File[" << tmpOutFile.str() << "] openned." << endl; }
+	}	
+
+	stringstream tmpOutFile;
+	tmpOutFile << outputPrefixFileName_ << outputContentIndex_;
+	fprintf(outputIndexFilePtr_, "%s %s %ud %ud %ud\n",
+					document.getURL().c_str(),
+					tmpOutFile.str().c_str(),
+					outputCurrentOffset_,
+					newOutputOffset,
+					document.getText().length()); // This length will be used by uncompress
+
+	outputCurrentOffset_ = newOutputOffset;
+
+	size_t nchars = fwrite(dPtr, sizeof(unsigned char), compressedDocSize, outputContentFilePtr_);
+	assert(nchars == compressedDocSize);
+}
+
