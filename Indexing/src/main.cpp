@@ -55,7 +55,7 @@ int indexCollection(string *collectionDirectory, string *collectionIndexFileName
 	delete collectionDirectory;
 	delete collectionIndexFileName;
 
-	return 0;
+	return ret;
 }
 
 int main(int argc, char **argv) {
