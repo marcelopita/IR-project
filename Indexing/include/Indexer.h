@@ -11,6 +11,7 @@
 #include <string>
 #include <fstream>
 #include "CollectionReader.h"
+#include <vector>
 
 using namespace std;
 using namespace RICPNS;
@@ -31,8 +32,8 @@ private:
 	string collectionIndexFileName;
 	CollectionReader *reader;
 
-	char **vocabulary;
-	char **documents;
+	vector<string> vocabulary;
+	vector<string> documents;
 
 };
 

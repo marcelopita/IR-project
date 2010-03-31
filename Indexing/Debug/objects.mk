@@ -4,4 +4,4 @@
 
 USER_OBJS :=
 
-LIBS := -lRICPlib -lz
+LIBS := -lRICPlib -lhtmlcxx -lz

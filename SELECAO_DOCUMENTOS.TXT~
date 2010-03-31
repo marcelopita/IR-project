@@ -1,0 +1,6 @@
+
+-REQUISITOS PARA SELEÇÃO DE DOCUMENTOS DA COLEÇÃO:
+
+1) Possuir cabeçalho HTTP com código de status 200, 203 ou 206;
+
+	Número de documentos que não possuem os requisitos: 182 (182/945075 = 0,0192577%)
