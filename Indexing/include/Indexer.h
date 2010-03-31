@@ -34,6 +34,7 @@ private:
 
 	vector<string> vocabulary;
 	vector<string> documents;
+	string charSets[1153];
 
 };
 

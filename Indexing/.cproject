@@ -25,7 +25,7 @@
 <option id="gnu.cpp.compiler.exe.debug.option.optimization.level.1515316355" name="Optimization Level" superClass="gnu.cpp.compiler.exe.debug.option.optimization.level" value="gnu.cpp.compiler.optimization.level.none" valueType="enumerated"/>
 <option id="gnu.cpp.compiler.exe.debug.option.debugging.level.274458641" name="Debug Level" superClass="gnu.cpp.compiler.exe.debug.option.debugging.level" value="gnu.cpp.compiler.debugging.level.max" valueType="enumerated"/>
 <option id="gnu.cpp.compiler.option.include.paths.576126617" name="Include paths (-I)" superClass="gnu.cpp.compiler.option.include.paths" valueType="includePath">
-<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode_old/src"/>
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Indexing/riCode_old/src}&quot;"/>
 <listOptionValue builtIn="false" value="/usr/local/include"/>
 </option>
 <option id="gnu.cpp.compiler.option.warnings.allwarn.214140142" name="All warnings (-Wall)" superClass="gnu.cpp.compiler.option.warnings.allwarn" value="true" valueType="boolean"/>
@@ -39,7 +39,7 @@
 <tool id="cdt.managedbuild.tool.gnu.c.linker.exe.debug.1884856883" name="GCC C Linker" superClass="cdt.managedbuild.tool.gnu.c.linker.exe.debug"/>
 <tool errorParsers="" id="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug.197625043" name="GCC C++ Linker" superClass="cdt.managedbuild.tool.gnu.cpp.linker.exe.debug">
 <option id="gnu.cpp.link.option.paths.722760018" name="Library search path (-L)" superClass="gnu.cpp.link.option.paths" valueType="libPaths">
-<listOptionValue builtIn="false" value="/home/pita/IR-project/riCode_old/src"/>
+<listOptionValue builtIn="false" value="&quot;${workspace_loc:/Indexing/riCode_old/src}&quot;"/>
 <listOptionValue builtIn="false" value="/usr/local/lib"/>
 </option>
 <option id="gnu.cpp.link.option.libs.1817658609" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
@@ -58,9 +58,9 @@
 </toolChain>
 </folderInfo>
 <sourceEntries>
-<entry excluding="include|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="include"/>
+<entry excluding="riCode_old|include|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 </sourceEntries>
 </configuration>
 </storageModule>
@@ -359,9 +359,9 @@
 </toolChain>
 </folderInfo>
 <sourceEntries>
-<entry excluding="include|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="src"/>
 <entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="include"/>
+<entry excluding="riCode_old|include|src" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name=""/>
 </sourceEntries>
 </configuration>
 </storageModule>
