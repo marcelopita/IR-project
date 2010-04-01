@@ -36,6 +36,8 @@ private:
 	vector<string> documents;
 	string charSets[1153];
 
+	void trim(std::string &str, std::string &whitespaces);
+
 };
 
 #endif /* INDEXER_H_ */

@@ -26,6 +26,16 @@ Indexer::~Indexer() {
 	delete this->reader;
 }
 
+void Indexer::trim(std::string &str, std::string &whitespaces) {
+	std::string::size_type pos = str.find_last_not_of(whitespaces);
+	if(pos != std::string::npos) {
+		str.erase(pos + 1);
+		pos = str.find_first_not_of(whitespaces);
+		if(pos != std::string::npos) str.erase(0, pos);
+	}
+	else str.erase(str.begin(), str.end());
+}
+
 int Indexer::index() {
 	fstream tempFile("/tmp/tempIndex", ios_base::app);
 
@@ -78,6 +88,8 @@ int Indexer::index() {
 		string htmlText;
 		getline(ss, htmlText, (char) 26);
 
+		string usefulText;
+
 		using namespace htmlcxx::HTML;
 
 		ParserDom parser;
@@ -87,19 +99,46 @@ int Indexer::index() {
 		tree<Node>::iterator it = rootNode.begin();
 		tree<Node>::iterator end = rootNode.end();
 
-		Node n;
-//		n.
-
 		for (; it != end; ++it) {
-			if (it->isTag() && (it->tagName() != "p" || it->tagName() !=  "P")) {
+			if (!it->isTag() && !it->isComment()) {
+				tree<Node>::iterator parent = rootNode.parent(it);
+				if (parent->isTag() && (parent->tagName() == "script" || parent->tagName() == "SCRIPT")) {
+					continue;
+				}
 
-				continue;
+				string itText(it->text());
+				string whitespaces(" \t\n\r,;|()/\{}");
+				this->trim(itText, whitespaces);
+
+				if (itText.empty()) {
+					continue;
+
+				} else {
+					itText = string(it->text());
+					trim(itText, whitespaces);
+					cout << it->text() << endl;
+				}
 			}
-			if (i == 9) {
-				cout << "Begin ----------------------" << endl;
-				cout << it->text() << endl;
-				cout << "End ------------------------" << endl;
-			}
+
+//			rootNode.parent(it);
+
+//			remove(itText.begin(), itText.end(), ' ');
+//			remove(itText.begin(), itText.end(), '\t');
+//
+//			if (itText != "\n")
+//				continue;
+//
+//			cout << "Texto: " << it->text() << endl;
+//
+//			if (!it->isComment()) {
+//				if (!it->isTag()) {
+//					usefulText.append(" ");
+//					usefulText.append(it->text());
+//
+//				} else if (it->tagName() == "meta" || it->tagName() == "META") {
+//					cout << it->text() << endl;
+//				}
+//			}
 		}
 
 		//		if (httpResponseCodeMsg.find("200") != string::npos
@@ -170,7 +209,7 @@ int Indexer::index() {
 		//		if (i % 20000 == 0)
 		//			cout << '\t' << i << endl;
 
-		if (i == 10)
+		if (i == 1)
 			break;
 	}
 
