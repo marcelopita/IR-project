@@ -1,2 +1,0 @@
-/usr/bin/ar cr libRICPlib.a  CMakeFiles/RICPlib.dir/CollectionReader.o CMakeFiles/RICPlib.dir/CollectionWriter.o CMakeFiles/RICPlib.dir/Document.o
-/usr/bin/ranlib libRICPlib.a
