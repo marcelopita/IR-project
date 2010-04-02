@@ -1,8 +1,0 @@
-
-FORMATO DO ARQUIVO INVERTIDO:
-
-(t1, f1) -> { (dx, Pdxt1), ... }
-(t2, f2) -> { (dy, Pdyt2), ... }
-
-Armazenar em disco triplas <termo; doc; (pos1, pos2, ..., posN)>
-
