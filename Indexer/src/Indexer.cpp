@@ -53,6 +53,17 @@ void Indexer::tokenize(const string& str, vector<string>& tokens,
 	}
 }
 
+void Indexer::getTerms(const string &text, vector<string> &terms) {
+	string tempTerm;
+
+	vector<char> allowedChars;
+	allowedChars.push_back()
+
+	for (int i = 0; i < text.size(); i++) {
+
+	}
+}
+
 int Indexer::filterInvalidHTTPHeader(string &docText) {
 	// Get HTTP return status code
 	stringstream ss(docText);
@@ -311,22 +322,8 @@ int Indexer::index() {
 			tempFile << termNumber << i << j;
 		}
 
-		//		vector<string>::iterator termsIter = indexableTerms.begin();
-		//		for (; termsIter != indexableTerms.end(); termsIter++) {
-		//			for (unsigned j = 0; j < indexableTerms.size(); j++) {
-		//				if (*termsIter == inde)
-		//			}
-		//		}
-
 		doc.clear();
 		++i;
-
-		//		if (i % 1000 == 0) {
-		//			cout << i << endl;
-		//		}
-
-//		if (i == 7266)
-//			break;
 	}
 
 	// Sorting (quicksort)
