@@ -5,4 +5,12 @@
 
 	Número de documentos que não possuem os requisitos: 189 (189/945075 = 0,0199984%)
 
-2) 
+2) Descartados os documentos que não são texto, PDF, MSWord, RSS, XML, PHP, Flash, XHTML, Perl, 
+
+
+-ALGUMAS ESTATÍSTICAS:
+
+Invalid HTTP headers:	189
+Invalid content types:	12962
+Unknown char set:	130534
+Number of terms:	9784615

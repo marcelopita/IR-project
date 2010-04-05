@@ -12,6 +12,7 @@
 #include <fstream>
 #include "CollectionReader.h"
 #include <vector>
+#include <map>
 
 using namespace std;
 using namespace RICPNS;
@@ -36,13 +37,22 @@ private:
 	string collectionIndexFileName;
 	CollectionReader *reader;
 
-	vector<string> vocabulary;
+	map<string, int> vocabulary;
 	vector<string> documents;
-	string charSets[1153];
+
+	string whitespaces1;
+	string whitespaces2;
 
 	void trim(std::string &str, std::string &whitespaces);
 
+	void tokenize(const string& str, vector<string>& tokens,
+			const string& delimiters);
+
 	int filterInvalidHTTPHeader(string &docText);
+
+	int preprocessDocument(Document &doc, string &usefulText,
+			long &numDocsInvalidHTTPHeader, long &numDocsInvalidContentType,
+			long &numDocsUnknownCharSet);
 
 };
 

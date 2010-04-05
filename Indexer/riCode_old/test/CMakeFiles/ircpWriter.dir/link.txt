@@ -1,0 +1,1 @@
+/usr/bin/c++   -Wall -Werror   CMakeFiles/ircpWriter.dir/testWriter.o  -o ircpWriter -rdynamic -L/media/E8A0AB7BA0AB4F3E/RI/riCollection/code/riCode_old/src ../src/libRICPlib.a -lz 
