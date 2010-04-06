@@ -7,18 +7,23 @@
 
 #include "../include/Indexer.h"
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <map>
 #include <sstream>
 #include <fstream>
+#include <iconv.h>
+#include <locale.h>
 #include <htmlcxx/html/ParserDom.h>
 #include <htmlcxx/html/CharsetConverter.h>
+#include <htmlcxx/html/utils.h>
+#include <algorithm>
 
 Indexer::Indexer(string collectionDirectory, string collectionIndexFileName) {
 	this->collectionDirectory = collectionDirectory;
 	this->collectionIndexFileName = collectionIndexFileName;
 	this->whitespaces1 = " \t\n\r";
-	this->whitespaces2 = " \t\n\r,;|()/\{}";
+	this->whitespaces2 = " \t\n\r,;|()/\\{}";
 }
 
 Indexer::~Indexer() {
@@ -54,14 +59,14 @@ void Indexer::tokenize(const string& str, vector<string>& tokens,
 }
 
 void Indexer::getTerms(const string &text, vector<string> &terms) {
-	string tempTerm;
-
-	vector<char> allowedChars;
-	allowedChars.push_back()
-
-	for (int i = 0; i < text.size(); i++) {
-
-	}
+	//	string tempTerm;
+	//
+	//	vector<char> allowedChars;
+	//	allowedChars.push_back()
+	//
+	//	for (int i = 0; i < text.size(); i++) {
+	//
+	//	}
 }
 
 int Indexer::filterInvalidHTTPHeader(string &docText) {
@@ -86,6 +91,7 @@ int Indexer::preprocessDocument(Document &doc, string &usefulText,
 		long &numDocsUnknownCharSet) {
 	// Full text
 	string text = doc.getText();
+	text.assign(htmlcxx::HTML::decode_entities(text));
 
 	// Filter 1: Remove docs with invalid HTTP header
 	if (this->filterInvalidHTTPHeader(text) == Indexer::DOC_BLOCKED) {
@@ -226,12 +232,11 @@ int Indexer::preprocessDocument(Document &doc, string &usefulText,
 			&& contentTypeHeaderLine.find("CHARSET") == string::npos
 			&& contentTypeHeaderLine.find("Charset") == string::npos) {
 		++numDocsUnknownCharSet;
-		charset = "";
+		charset = "utf-8";
 
 	} else {
 		vector<string> contentTypeTokens;
 		this->tokenize(contentTypeHeaderLine, contentTypeTokens, " ;=<>");
-
 
 		unsigned j;
 		for (j = 0; j < contentTypeTokens.size(); j++) {
@@ -247,32 +252,86 @@ int Indexer::preprocessDocument(Document &doc, string &usefulText,
 
 	this->trim(charset, whitespaces2);
 
-	using namespace htmlcxx;
+	// Transform all contents to ascii, if possible
+	if (charset != "ascii" && charset != "ASCII" && charset != "") {
+		char input[usefulText.size() + 1];
+		memset(input, 0, usefulText.size() + 1);
+		strncpy(input, usefulText.c_str(), usefulText.size());
+		char *inBuf = input;
 
-	// Transform all contents to utf-8 if possible
-	if (charset != "utf-8" && charset != "UTF-8" && charset != "") {
-		try {
-			CharsetConverter converter(charset, "UTF-8");
-			usefulText.assign(converter.convert(usefulText));
+		char output[usefulText.size() * 2 + 1];
+		char *outBuf = output;
+		memset(output, 0, usefulText.size() * 2 + 1);
 
-		} catch (CharsetConverter::Exception) {
-			numDocsUnknownCharSet++;
+		size_t inputSize = usefulText.size();
+		size_t outputSize = usefulText.size() * 2;
+
+		setlocale(LC_ALL, "");
+
+		iconv_t cd = iconv_open("ascii//translit", charset.c_str());
+		if (cd != (iconv_t) (-1)) {
+			iconv(cd, &inBuf, &inputSize, &outBuf, &outputSize);
+			usefulText.assign(output);
 		}
-	}
 
-	// Remove tabs and carriage returns
-	for (unsigned k = 0; k < usefulText.size(); k++) {
-		if (usefulText[k] == '\r' || usefulText[k] == '\n' || usefulText[k]
-				== '\t') {
-			usefulText[k] = ' ';
-		}
+		iconv_close(cd);
+
+		//		delete inBuf;
+		//		delete outBuf;
 	}
 
 	return DOC_OK;
 }
 
+void Indexer::sortTriples() {
+	ifstream triplesFile("tempIndex.tmp", ios::in | ios::binary);
+	ofstream triplesFileSorted("tempIndexSorted.tmp", ios::out | ios::binary);
+
+	// k for 100 MB blocks = 104857600 bytes
+	long k = (long) 104857600 / (long) (2 * sizeof(long) + sizeof(unsigned));
+
+	long lastPosition = 0;
+	triplesFile.seekg(lastPosition);
+
+	while (!triplesFile.eof()) {
+		long bytesRead = 0;
+		triplesFile.seekg(lastPosition);
+
+		void ***triples;
+		triples = new void**[k];
+
+		for (long i = 0; i < (long)k; i++) {
+			triples[i] = new void*[3];
+			triples[i][0] = new long;
+			triples[i][1] = new long;
+			triples[i][2] = new unsigned;
+
+			if (!triplesFile.eof()) {
+//				triplesFile.read(triples[i][0], sizeof(long));
+//				triplesFile.read(triples[i][1], sizeof(long));
+//				triplesFile.read(triples[i][2], sizeof(unsigned));
+				triplesFile >> triples[i][0] >> triples[i][1] >> triples[i][2];
+				cout << triples[i][0] << ", " << triples[i][1] << ", " << triples[i][2];
+				bytesRead += (2 * sizeof(long) + sizeof(unsigned));
+
+			} else {
+				break;
+			}
+		}
+
+		// qsort
+
+		triplesFileSorted.seekp(lastPosition);
+		for (long i = 0; i < (long)(bytesRead / (2 * sizeof(long) + sizeof(unsigned))); i++) {
+			triplesFileSorted << triples[i][0] << triples[i][1] << triples[i][2];
+		}
+
+		lastPosition += bytesRead;
+	}
+}
+
 int Indexer::index() {
-	fstream tempFile("/tmp/tempIndex", ios_base::app);
+	ofstream tempFile("tempIndex.tmp");
 
 	this->reader = new CollectionReader(this->collectionDirectory,
 			this->collectionIndexFileName);
@@ -285,9 +344,6 @@ int Indexer::index() {
 	long numDocsUnknownCharSet = 0;
 
 	while (reader->getNextDocument(doc)) {
-		if (i % 10000 == 0)
-			cout << i << endl;
-
 		// Index document URL
 		string url = doc.getURL();
 		this->documents.push_back(url);
@@ -301,10 +357,18 @@ int Indexer::index() {
 		}
 
 		vector<string> indexableTerms;
-		tokenize(usefulText, indexableTerms, " \t,;:!?()[]{}|");
+		tokenize(usefulText, indexableTerms,
+				" \t\r\n\"\'!@#&*()_+=`{[}]^~ç?/\\:><,.;ªº");
 
 		for (unsigned j = 0; j < indexableTerms.size(); j++) {
-			int termNumber;
+			if (indexableTerms[j] == "-") {
+				continue;
+			}
+
+			transform(indexableTerms[j].begin(), indexableTerms[j].end(),
+					indexableTerms[j].begin(), (int(*)(int)) tolower);
+
+			long termNumber;
 
 			map<string, int>::iterator refTerm = vocabulary.find(
 					indexableTerms[j]);
@@ -312,23 +376,32 @@ int Indexer::index() {
 				termNumber = vocabulary.size();
 				vocabulary.insert(make_pair(indexableTerms[j], termNumber));
 
+				//				cout << termNumber << ": " << indexableTerms[j] << endl;
+
 			} else {
 				termNumber = (*refTerm).second;
-
-				//				cout << termNumber << endl;
 			}
 
 			// TODO: Compress entry in temporary file
 			tempFile << termNumber << i << j;
 		}
 
+		if (i == 1000) {
+			break;
+		}
+
+		//		if (i % 5000 == 0) {
+		//			cout << "===============" << endl;
+		//			cout << i << endl;
+		//			cout << "===============" << endl;
+		//		}
+
 		doc.clear();
 		++i;
 	}
 
 	// Sorting (quicksort)
-	// k for 100 MB blocks
-	int k = (int) 104857600 / (int) (16 * sizeof(int) + 8 * sizeof(unsigned));
+	sortTriples();
 
 	cout << "\n-----------------------------------------------------------"
 			<< endl;

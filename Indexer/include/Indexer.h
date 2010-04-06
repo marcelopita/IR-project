@@ -56,6 +56,8 @@ private:
 			long &numDocsInvalidHTTPHeader, long &numDocsInvalidContentType,
 			long &numDocsUnknownCharSet);
 
+	void sortTriples();
+
 };
 
 #endif /* INDEXER_H_ */
