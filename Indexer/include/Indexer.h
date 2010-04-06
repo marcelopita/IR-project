@@ -40,10 +40,22 @@ private:
 	map<string, int> vocabulary;
 	vector<string> documents;
 
+	int separateHeaderContent(string&, string&, string&);
+
+	int getContentTypeHeader(string&, string&);
+
+	void getCharSetHeader(string&, string&);
+
+	void getCharSetMetaTag(string&, string&);
+
+	int changeCharSet(const string&, const string&, string&);
+
+	void extractUsefulContent(string&, string&);
+
 	string whitespaces1;
 	string whitespaces2;
 
-	void trim(std::string &str, std::string &whitespaces);
+	void trim(std::string &str, const std::string &whitespaces);
 
 	void tokenize(const string& str, vector<string>& tokens,
 			const string& delimiters);
@@ -54,7 +66,7 @@ private:
 			int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
 			int &numDocsUnknownCharSet);
 
-	void sortTempFile();
+//	void sortTempFile();
 
 	void sortTriples();
 
