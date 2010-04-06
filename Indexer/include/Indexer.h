@@ -48,13 +48,13 @@ private:
 	void tokenize(const string& str, vector<string>& tokens,
 			const string& delimiters);
 
-	void getTerms(const string &text, vector<string> &terms);
-
 	int filterInvalidHTTPHeader(string &docText);
 
 	int preprocessDocument(Document &doc, string &usefulText,
-			long &numDocsInvalidHTTPHeader, long &numDocsInvalidContentType,
-			long &numDocsUnknownCharSet);
+			int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
+			int &numDocsUnknownCharSet);
+
+	void sortTempFile();
 
 	void sortTriples();
 

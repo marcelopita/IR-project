@@ -58,17 +58,6 @@ void Indexer::tokenize(const string& str, vector<string>& tokens,
 	}
 }
 
-void Indexer::getTerms(const string &text, vector<string> &terms) {
-	//	string tempTerm;
-	//
-	//	vector<char> allowedChars;
-	//	allowedChars.push_back()
-	//
-	//	for (int i = 0; i < text.size(); i++) {
-	//
-	//	}
-}
-
 int Indexer::filterInvalidHTTPHeader(string &docText) {
 	// Get HTTP return status code
 	stringstream ss(docText);
@@ -87,8 +76,8 @@ int Indexer::filterInvalidHTTPHeader(string &docText) {
 }
 
 int Indexer::preprocessDocument(Document &doc, string &usefulText,
-		long &numDocsInvalidHTTPHeader, long &numDocsInvalidContentType,
-		long &numDocsUnknownCharSet) {
+		int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
+		int &numDocsUnknownCharSet) {
 	// Full text
 	string text = doc.getText();
 	text.assign(htmlcxx::HTML::decode_entities(text));
@@ -275,73 +264,119 @@ int Indexer::preprocessDocument(Document &doc, string &usefulText,
 		}
 
 		iconv_close(cd);
-
-		//		delete inBuf;
-		//		delete outBuf;
 	}
 
 	return DOC_OK;
 }
 
-void Indexer::sortTriples() {
-	ifstream triplesFile("tempIndex.tmp", ios::in | ios::binary);
-	ofstream triplesFileSorted("tempIndexSorted.tmp", ios::out | ios::binary);
+class triple {
+public:
+	int termNumber;
+	int docNumber;
+	int termPosition;
+	bool operator < (triple &t) {
+		if (this->termNumber < t.termNumber) {
+			return true;
 
-	// k for 100 MB blocks = 104857600 bytes
-	long k = (long) 104857600 / (long) (2 * sizeof(long) + sizeof(unsigned));
+		} else if (this->termNumber == t.termNumber) {
+			if (this->docNumber < t.docNumber) {
+				return true;
 
-	long lastPosition = 0;
-	triplesFile.seekg(lastPosition);
-
-	while (!triplesFile.eof()) {
-		long bytesRead = 0;
-		triplesFile.seekg(lastPosition);
-
-		void ***triples;
-		triples = new void**[k];
-
-		for (long i = 0; i < (long)k; i++) {
-			triples[i] = new void*[3];
-			triples[i][0] = new long;
-			triples[i][1] = new long;
-			triples[i][2] = new unsigned;
-
-			if (!triplesFile.eof()) {
-//				triplesFile.read(triples[i][0], sizeof(long));
-//				triplesFile.read(triples[i][1], sizeof(long));
-//				triplesFile.read(triples[i][2], sizeof(unsigned));
-				triplesFile >> triples[i][0] >> triples[i][1] >> triples[i][2];
-				cout << triples[i][0] << ", " << triples[i][1] << ", " << triples[i][2];
-				bytesRead += (2 * sizeof(long) + sizeof(unsigned));
-
-			} else {
-				break;
+			} else if (this->docNumber == t.docNumber) {
+				if (this->termPosition <= t.termPosition) {
+					return true;
+				}
 			}
 		}
 
-		// qsort
+		return false;
+	}
+};
 
-		triplesFileSorted.seekp(lastPosition);
-		for (long i = 0; i < (long)(bytesRead / (2 * sizeof(long) + sizeof(unsigned))); i++) {
-			triplesFileSorted << triples[i][0] << triples[i][1] << triples[i][2];
+//struct triple {
+//	int termNumber;
+//	int docNumber;
+//	int termPosition;
+//};
+
+void Indexer::sortTempFile() {
+	ifstream tempFile("tempFile.tmp");
+	ofstream tempFileSorted("temFileSorted.tmp");
+	tempFileSorted.clear();
+
+	while (!tempFile.eof()) {
+		triple aTriple;
+		if (tempFile.read((char*) &aTriple, sizeof(triple)) > 0) {
+			tempFileSorted.write((char*) &aTriple, sizeof(triple));
+		}
+	}
+
+	tempFile.close();
+	tempFileSorted.close();
+}
+
+/*
+ * Sort triples in temporary file.
+ */
+void Indexer::sortTriples() {
+	fstream triplesFile("tempIndex.tmp", ios_base::in | ios_base::binary
+			| ios_base::trunc);
+
+	// k for 1 MB blocks = 104857600 bytes
+	int pageSize = 1048576;
+	int bytesPerTriple = sizeof(triple);
+
+	int k = pageSize / bytesPerTriple;
+
+	int lastPosition = 0;
+	triplesFile.seekg(lastPosition);
+
+	while (!triplesFile.eof()) {
+		int bytesRead = 0;
+		triplesFile.seekg(lastPosition);
+
+		vector<triple> triples;
+
+		for (int i = 0; i < k; i++) {
+			if (triplesFile.eof())
+				break;
+
+			triple aTriple;
+			if (triplesFile.read((char*) &aTriple, sizeof(triple)) > 0) {
+				triples.push_back(aTriple);
+			}
+
+			bytesRead += bytesPerTriple;
+		}
+
+		// qsort
+		qsort()
+
+		triplesFile.seekp(lastPosition);
+		for (int i = 0; i < (int) triples.size(); i++) {
+			triple aTriple = triples.at(i);
+			triplesFile.write((char*) &aTriple, sizeof(triple));
 		}
 
 		lastPosition += bytesRead;
 	}
+
+	triplesFile.close();
 }
 
 int Indexer::index() {
-	ofstream tempFile("tempIndex.tmp");
+	ofstream tempFile("tempFile.tmp");
+	tempFile.clear();
 
 	this->reader = new CollectionReader(this->collectionDirectory,
 			this->collectionIndexFileName);
 
 	Document doc;
 	doc.clear();
-	long i = 0;
-	long numDocsInvalidHTTPHeader = 0;
-	long numDocsInvalidContentType = 0;
-	long numDocsUnknownCharSet = 0;
+	int i = 0;
+	int numDocsInvalidHTTPHeader = 0;
+	int numDocsInvalidContentType = 0;
+	int numDocsUnknownCharSet = 0;
 
 	while (reader->getNextDocument(doc)) {
 		// Index document URL
@@ -360,7 +395,7 @@ int Indexer::index() {
 		tokenize(usefulText, indexableTerms,
 				" \t\r\n\"\'!@#&*()_+=`{[}]^~ç?/\\:><,.;ªº");
 
-		for (unsigned j = 0; j < indexableTerms.size(); j++) {
+		for (int j = 0; j < (int) indexableTerms.size(); j++) {
 			if (indexableTerms[j] == "-") {
 				continue;
 			}
@@ -368,7 +403,7 @@ int Indexer::index() {
 			transform(indexableTerms[j].begin(), indexableTerms[j].end(),
 					indexableTerms[j].begin(), (int(*)(int)) tolower);
 
-			long termNumber;
+			int termNumber;
 
 			map<string, int>::iterator refTerm = vocabulary.find(
 					indexableTerms[j]);
@@ -382,13 +417,18 @@ int Indexer::index() {
 				termNumber = (*refTerm).second;
 			}
 
+			triple aTriple;
+			aTriple.termNumber = termNumber;
+			aTriple.docNumber = i;
+			aTriple.termPosition = j;
+
 			// TODO: Compress entry in temporary file
-			tempFile << termNumber << i << j;
+			tempFile.write((char*) &aTriple, sizeof(triple));
 		}
 
-		if (i == 1000) {
-			break;
-		}
+		//		if (i == 1000) {
+		//			break;
+		//		}
 
 		//		if (i % 5000 == 0) {
 		//			cout << "===============" << endl;
@@ -400,8 +440,11 @@ int Indexer::index() {
 		++i;
 	}
 
+	tempFile.close();
+
 	// Sorting (quicksort)
-	sortTriples();
+	//	sortTempFile();
+	//	sortTriples();
 
 	cout << "\n-----------------------------------------------------------"
 			<< endl;
