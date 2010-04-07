@@ -18,10 +18,20 @@
 #include <htmlcxx/html/CharsetConverter.h>
 #include <htmlcxx/html/utils.h>
 #include <algorithm>
+#include <errno.h>
 
-Indexer::Indexer(string collectionDirectory, string collectionIndexFileName) {
+struct TempFileTriple {
+	int termNumber;
+	int docNumber;
+	int termPosition;
+};
+
+Indexer::Indexer(string collectionDirectory, string collectionIndexFileName,
+		string tempFileName, string indexFileName) {
 	this->collectionDirectory = collectionDirectory;
 	this->collectionIndexFileName = collectionIndexFileName;
+	this->tempFileName = tempFileName;
+	this->indexFileName = indexFileName;
 	this->whitespaces1 = " \t\n\r";
 	this->whitespaces2 = " \t\n\r,;|()/\\{}";
 }
@@ -42,7 +52,7 @@ void Indexer::trim(std::string &str, const std::string &whitespaces = " ") {
 }
 
 void Indexer::tokenize(const string& str, vector<string>& tokens,
-		const string& delimiters = " ") {
+		const string& delimiters = " ", bool lowerCase = false) {
 	// Skip delimiters at beginning.
 	string::size_type lastPos = str.find_first_not_of(delimiters, 0);
 	// Find first "non-delimiter".
@@ -50,7 +60,14 @@ void Indexer::tokenize(const string& str, vector<string>& tokens,
 
 	while (string::npos != pos || string::npos != lastPos) {
 		// Found a token, add it to the vector.
-		tokens.push_back(str.substr(lastPos, pos - lastPos));
+		if (!lowerCase) {
+			tokens.push_back(str.substr(lastPos, pos - lastPos));
+		} else {
+			string subStr = str.substr(lastPos, pos - lastPos);
+			transform(subStr.begin(), subStr.end(), subStr.begin(),
+					(int(*)(int)) tolower);
+			tokens.push_back(subStr);
+		}
 		// Skip delimiters.  Note the "not_of"
 		lastPos = str.find_first_not_of(delimiters, pos);
 		// Find next "non-delimiter"
@@ -269,12 +286,6 @@ int Indexer::preprocessDocument(Document &doc, string &usefulText,
 	return DOC_OK;
 }
 
-struct triple {
-	int termNumber;
-	int docNumber;
-	int termPosition;
-};
-
 //void Indexer::sortTempFile() {
 //	ifstream tempFile("tempFile.tmp");
 //	ofstream tempFileSorted("temFileSorted.tmp");
@@ -291,7 +302,7 @@ struct triple {
 //	tempFileSorted.close();
 //}
 
-bool cmp(triple t1, triple t2) {
+bool cmp(TempFileTriple t1, TempFileTriple t2) {
 	if (t1.termNumber > t2.termNumber) {
 		return true;
 
@@ -318,7 +329,7 @@ void Indexer::sortTriples() {
 
 	// k for 1 MB blocks = 104857600 bytes
 	int pageSize = 1048576;
-	int bytesPerTriple = sizeof(triple);
+	int bytesPerTriple = sizeof(TempFileTriple);
 
 	int k = pageSize / bytesPerTriple;
 
@@ -329,14 +340,14 @@ void Indexer::sortTriples() {
 		int bytesRead = 0;
 		triplesFile.seekg(lastPosition);
 
-		vector<triple> triples;
+		vector<TempFileTriple> triples;
 
 		for (int i = 0; i < k; i++) {
 			if (triplesFile.eof())
 				break;
 
-			triple aTriple;
-			if (triplesFile.read((char*) &aTriple, sizeof(triple)) > 0) {
+			TempFileTriple aTriple;
+			if (triplesFile.read((char*) &aTriple, sizeof(TempFileTriple)) > 0) {
 				triples.push_back(aTriple);
 			}
 
@@ -348,8 +359,8 @@ void Indexer::sortTriples() {
 
 		triplesFile.seekp(lastPosition);
 		for (int i = 0; i < (int) triples.size(); i++) {
-			triple aTriple = triples.at(i);
-			triplesFile.write((char*) &aTriple, sizeof(triple));
+			TempFileTriple aTriple = triples.at(i);
+			triplesFile.write((char*) &aTriple, sizeof(TempFileTriple));
 		}
 
 		lastPosition += bytesRead;
@@ -531,12 +542,20 @@ int Indexer::changeCharSet(const string& from, const string& to,
 		return DOC_BLOCKED;
 	}
 
-	if (iconv(cd, &inBuf, &inputSize, &outBuf, &outputSize) == (size_t) (-1)) {
-		delete[] input;
-		delete[] output;
-		return DOC_BLOCKED;
+	bool error = false;
 
-	}
+	do {
+		if (iconv(cd, &inBuf, &inputSize, &outBuf, &outputSize)
+				== (size_t) (-1)) {
+			error = true;
+			inputSize--;
+			inBuf++;
+
+		} else {
+			error = false;
+		}
+
+	} while (error);
 
 	content.assign(output);
 
@@ -577,6 +596,67 @@ void Indexer::extractUsefulContent(string& htmlText, string& usefulText) {
 	}
 }
 
+/**
+ * Compress a buffer using the XXXX algorithm.
+ */
+void Indexer::compress(char* inBuffer, char* outBuffer) {
+	// TODO: Implement XXXX algorithm
+	outBuffer = inBuffer;
+}
+
+/**
+ * Uncompress a buffer compressed in the XXXX algorithm.
+ */
+void Indexer::uncompress(char* inBuffer, char* outBuffer) {
+	// TODO: Uncompress buffer
+	outBuffer = inBuffer;
+}
+
+/**
+ * Compress triples.
+ */
+void Indexer::compressTriple(char* triple, char* outBuffer) {
+	this->compress(triple, outBuffer);
+}
+
+/**
+ * Uncompress triples.
+ */
+void Indexer::uncompressTriple(char* inBuffer, char* triple) {
+	this->uncompress(inBuffer, triple);
+}
+
+/**
+ * Save triples <term,doc,pos> in temporary file.
+ *
+ */
+void Indexer::saveTriplesTempFile(vector<string>& terms, int docNumber) {
+	ofstream tempFile(this->tempFileName.c_str());
+	tempFile.clear();
+
+	for (int i = 0; i < (int) terms.size(); i++) {
+		map<string, int>::iterator refTerm = vocabulary.find(terms[i]);
+
+		int termNumber;
+		if (refTerm == vocabulary.end()) {
+			termNumber = vocabulary.size();
+			vocabulary.insert(make_pair(terms[i], termNumber));
+
+		} else {
+			termNumber = refTerm->second;
+		}
+
+		TempFileTriple triple;
+		triple.termNumber = termNumber;
+		triple.docNumber = docNumber;
+		triple.termPosition = i;
+
+		tempFile.write((char*)&triple, sizeof(TempFileTriple));
+	}
+
+	tempFile.close();
+}
+
 /*
  * Index collection terms and documents.
  */
@@ -587,6 +667,7 @@ int Indexer::index() {
 	Document doc;
 	doc.clear();
 	int i = 0;
+	int lastDocNumber = 0;
 	int numDocsInvalidHTTPHeader = 0;
 	int numDocsInvalidContentType = 0;
 	int numDocsUnknownCharSet = 0;
@@ -601,6 +682,8 @@ int Indexer::index() {
 		if (separateHeaderContent(fullText, contentTypeHeaderLine, content)
 				== DOC_BLOCKED) {
 			numDocsInvalidHTTPHeader++;
+			doc.clear();
+			i++;
 			continue;
 		}
 
@@ -611,6 +694,8 @@ int Indexer::index() {
 		if (getContentTypeHeader(contentTypeHeaderLine, contentType)
 				== DOC_BLOCKED) {
 			numDocsInvalidContentType++;
+			doc.clear();
+			i++;
 			continue;
 		}
 
@@ -621,7 +706,8 @@ int Indexer::index() {
 		getCharSetHeader(contentTypeHeaderLine, charsetHeader);
 
 		if (contentType == "html") {
-			getCharSetMetaTag(content, charsetMetaTag);
+			string iso88591Content = htmlcxx::HTML::decode_entities(content);
+			getCharSetMetaTag(iso88591Content, charsetMetaTag);
 
 		} else {
 			charsetMetaTag = "";
@@ -634,14 +720,16 @@ int Indexer::index() {
 			charset = charsetHeader;
 
 		} else {
-			charset = "ISO8859-1";
+			charset = "ISO-8859-1";
 		}
 
 		// CHANGE HTML CONTENT CHAR SET TO ISO8859-1 AND DECODE HTML ENTITIES
 
 		if (contentType == "html") {
-			if (changeCharSet(charset, "ISO8859-1", content) == DOC_BLOCKED) {
+			if (changeCharSet(charset, "ISO-8859-1", content) == DOC_BLOCKED) {
 				numDocsUnknownCharSet++;
+				doc.clear();
+				i++;
 				continue;
 			}
 
@@ -653,6 +741,8 @@ int Indexer::index() {
 
 		if (changeCharSet(charset, "ASCII//TRANSLIT", content) == DOC_BLOCKED) {
 			numDocsUnknownCharSet++;
+			doc.clear();
+			i++;
 			continue;
 		}
 
@@ -667,13 +757,33 @@ int Indexer::index() {
 			extractUsefulContent(content, usefulContent);
 		}
 
-		// GET INDEXABLE TERMS
+		// REGISTER DOCUMENT URL AND GET ITS NUMBER
+
+		this->documents.push_back(doc.getURL());
+		int docNumber = lastDocNumber++;
+
+		// GET INDEXABLE TERMS IN LOWER CASE
 
 		vector<string> indexableTerms;
 		tokenize(usefulContent, indexableTerms,
-				" \t\r\n\"\'!@#&*()_+=`{[}]^~ç?/\\:><,.;ªº");
+				" \t\r\n\"\'!@#&*()_+=`{[}]^~ç?/\\:><,.;ªº", true);
+
+//				/*********** TEMP ***********/
+//				cout << "\n=== Documento " << i << " =================" << endl;
+//				for (int j = 0; j < (int) indexableTerms.size(); j++)
+//					cout << j << ":\t" << indexableTerms.at(j) << endl;
+//
+//				doc.clear();
+//				i++;
+//				if (i == 50) {
+//					break;
+//				}
+//				continue;
+//				/****************************/
 
 		// SAVE TRIPLES IN A COMPRESSED TEMPORARY FILE
+
+		saveTriplesTempFile(indexableTerms, docNumber);
 
 		// SORT THE TEMPORARY FILE
 
@@ -681,7 +791,17 @@ int Indexer::index() {
 
 		doc.clear();
 		i++;
+
+		if (i >= 50) {
+			break;
+		}
 	}
+
+	cout << "\n#############################" << endl;
+	cout << "Invalid HTTP header:\t" << numDocsInvalidHTTPHeader << endl;
+	cout << "Invalid content type:\t" << numDocsInvalidContentType << endl;
+	cout << "Unknown char set:\t" << numDocsUnknownCharSet << endl;
+	cout << "Useful documents:\t" << lastDocNumber << endl;
 
 	return 0;
 }

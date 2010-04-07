@@ -37,19 +37,22 @@ int processQueries() {
 		}
 	}
 
-//	for (unsigned i = 0; i < words.size(); i++) {
-//		cout << words[i] << endl;
-//	}
+	//	for (unsigned i = 0; i < words.size(); i++) {
+	//		cout << words[i] << endl;
+	//	}
 
 	cout << "\nResultados:\n";
 
 	return 0;
 }
 
-int indexCollection(string *collectionDirectory, string *collectionIndexFileName) {
+int indexCollection(string *collectionDirectory,
+		string *collectionIndexFileName, string *tempFileName,
+		string *indexFileName) {
 	cout << "Indexing collection..." << endl;
 
-	Indexer indexer(*collectionDirectory, *collectionIndexFileName);
+	Indexer indexer(*collectionDirectory, *collectionIndexFileName,
+			*tempFileName, *indexFileName);
 	int ret = indexer.index();
 
 	delete collectionDirectory;
@@ -71,7 +74,8 @@ int main(int argc, char **argv) {
 			exit(processQueries());
 
 		} else if (mode == 2) {
-			exit(indexCollection(new string(argv[2]), new string(argv[3])));
+			exit(indexCollection(new string(argv[2]), new string(argv[3]),
+					new string(argv[4]), new string(argv[5])));
 
 		} else {
 			cerr << "|ERRO|\tInforme um dos modos como parâmetro do programa:";

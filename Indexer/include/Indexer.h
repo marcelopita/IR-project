@@ -21,7 +21,7 @@ class Indexer {
 
 public:
 
-	Indexer(string collectionDirectory, string collectionIndexFileName);
+	Indexer(string collectionDirectory, string collectionIndexFileName, string tempFileName, string indexFileName);
 
 	~Indexer();
 
@@ -35,6 +35,8 @@ private:
 
 	string collectionDirectory;
 	string collectionIndexFileName;
+	string tempFileName;
+	string indexFileName;
 	CollectionReader *reader;
 
 	map<string, int> vocabulary;
@@ -52,13 +54,23 @@ private:
 
 	void extractUsefulContent(string&, string&);
 
+	void saveTriplesTempFile(vector<string>&, int);
+
+	void compress(char*, char*);
+
+	void uncompress(char*, char*);
+
+	void compressTriple(char*, char*);
+
+	void uncompressTriple(char*, char*);
+
 	string whitespaces1;
 	string whitespaces2;
 
 	void trim(std::string &str, const std::string &whitespaces);
 
 	void tokenize(const string& str, vector<string>& tokens,
-			const string& delimiters);
+			const string& delimiters, bool lowerCase);
 
 	int filterInvalidHTTPHeader(string &docText);
 
