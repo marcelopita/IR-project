@@ -602,9 +602,6 @@ void Indexer::extractUsefulContent(string& htmlText, string& usefulText) {
 void Indexer::compress(char* inBuffer, char* outBuffer) {
 	// TODO: Implement XXXX algorithm
 	outBuffer = inBuffer;
-	for (int i = 0; i < 10; i++) {
-
-	}
 }
 
 /**
