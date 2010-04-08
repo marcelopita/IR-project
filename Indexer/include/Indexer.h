@@ -17,11 +17,16 @@
 using namespace std;
 using namespace RICPNS;
 
+struct TempFileTriple;
+struct SortedRun;
+struct RunTriple;
+
 class Indexer {
 
 public:
 
-	Indexer(string collectionDirectory, string collectionIndexFileName, string tempFileName, string indexFileName);
+	Indexer(string collectionDirectory, string collectionIndexFileName,
+			string tempFileName, string indexFileName, int runSize);
 
 	~Indexer();
 
@@ -36,11 +41,17 @@ private:
 	string collectionDirectory;
 	string collectionIndexFileName;
 	string tempFileName;
+	string finalTempFileName;
 	string indexFileName;
+	int runSize;
+	int k;
 	CollectionReader *reader;
 
 	map<string, int> vocabulary;
 	vector<string> documents;
+	vector<TempFileTriple> kTriples;
+	int numTriplesSaved;
+	vector<SortedRun> sortedRuns;
 
 	int separateHeaderContent(string&, string&, string&);
 
@@ -54,8 +65,6 @@ private:
 
 	void extractUsefulContent(string&, string&);
 
-	void saveTriplesTempFile(vector<string>&, int);
-
 	void compress(char*, char*);
 
 	void uncompress(char*, char*);
@@ -63,6 +72,12 @@ private:
 	void compressTriple(char*, char*);
 
 	void uncompressTriple(char*, char*);
+
+	void saveTriplesTempFile(vector<string>&, int);
+
+	void saveTriplesVectorTempFile();
+
+	void mergeSortedRuns();
 
 	string whitespaces1;
 	string whitespaces2;
@@ -74,13 +89,13 @@ private:
 
 	int filterInvalidHTTPHeader(string &docText);
 
-	int preprocessDocument(Document &doc, string &usefulText,
-			int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
-			int &numDocsUnknownCharSet);
+	//	int preprocessDocument(Document &doc, string &usefulText,
+	//			int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
+	//			int &numDocsUnknownCharSet);
 
-//	void sortTempFile();
+	//	void sortTempFile();
 
-	void sortTriples();
+	//	void sortTriples();
 
 };
 

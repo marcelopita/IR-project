@@ -48,11 +48,11 @@ int processQueries() {
 
 int indexCollection(string *collectionDirectory,
 		string *collectionIndexFileName, string *tempFileName,
-		string *indexFileName) {
+		string *indexFileName, int runSize) {
 	cout << "Indexing collection..." << endl;
 
 	Indexer indexer(*collectionDirectory, *collectionIndexFileName,
-			*tempFileName, *indexFileName);
+			*tempFileName, *indexFileName, runSize);
 	int ret = indexer.index();
 
 	delete collectionDirectory;
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
 
 		} else if (mode == 2) {
 			exit(indexCollection(new string(argv[2]), new string(argv[3]),
-					new string(argv[4]), new string(argv[5])));
+					new string(argv[4]), new string(argv[5]), atoi(argv[6])));
 
 		} else {
 			cerr << "|ERRO|\tInforme um dos modos como parâmetro do programa:";
