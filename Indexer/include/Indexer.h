@@ -18,7 +18,6 @@ using namespace std;
 using namespace RICPNS;
 
 struct TempFileTriple;
-struct SortedRun;
 struct RunTriple;
 
 class Indexer {
@@ -40,7 +39,8 @@ private:
 
 	string collectionDirectory;
 	string collectionIndexFileName;
-	string tempFileName;
+	string tempDir;
+	string tempFilePrefix;
 	string finalTempFileName;
 	string indexFileName;
 	int runSize;
@@ -50,8 +50,9 @@ private:
 	map<string, int> vocabulary;
 	vector<string> documents;
 	vector<TempFileTriple> kTriples;
+	vector<TempFileTriple> triplesPerTerm;
+	int numRuns;
 	int numTriplesSaved;
-	vector<SortedRun> sortedRuns;
 
 	int separateHeaderContent(string&, string&, string&);
 
@@ -76,6 +77,8 @@ private:
 	void saveTriplesTempFile(vector<string>&, int);
 
 	void saveTriplesVectorTempFile();
+
+	void writeInvertedFile();
 
 	void mergeSortedRuns();
 

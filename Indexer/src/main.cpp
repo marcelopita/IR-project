@@ -47,12 +47,12 @@ int processQueries() {
 }
 
 int indexCollection(string *collectionDirectory,
-		string *collectionIndexFileName, string *tempFileName,
+		string *collectionIndexFileName, string *tempFileNamePrefix,
 		string *indexFileName, int runSize) {
 	cout << "Indexing collection..." << endl;
 
 	Indexer indexer(*collectionDirectory, *collectionIndexFileName,
-			*tempFileName, *indexFileName, runSize);
+			*tempFileNamePrefix, *indexFileName, runSize);
 	int ret = indexer.index();
 
 	delete collectionDirectory;
