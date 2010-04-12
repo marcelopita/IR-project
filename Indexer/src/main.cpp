@@ -8,40 +8,91 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string>
+#include <set>
 #include <vector>
 
 #include "../include/Indexer.h"
+#include "../include/QueryProcessor.h"
 
 using namespace std;
+
+void tokenize(const string& str, vector<string>& tokens,
+		const string& delimiters = " ") {
+	// Skip delimiters at beginning.
+	string::size_type lastPos = str.find_first_not_of(delimiters, 0);
+	// Find first "non-delimiter".
+	string::size_type pos = str.find_first_of(delimiters, lastPos);
+
+	while (string::npos != pos || string::npos != lastPos) {
+		// Found a token, add it to the vector.
+		tokens.push_back(str.substr(lastPos, pos - lastPos));
+		// Skip delimiters.  Note the "not_of"
+		lastPos = str.find_first_not_of(delimiters, pos);
+		// Find next "non-delimiter"
+		pos = str.find_first_of(delimiters, lastPos);
+	}
+}
 
 int processQueries() {
 	cout << "*** PROCESSAMENTO DE CONSULTA ***\n";
 
-	string query;
-	cout << "\nBusca >> ";
-	getline(cin, query);
+	string vocabularyFileName = "vocabulary";
+	string urlsFileName = "urls";
+	string invertedFileName = "inverted_file";
 
-	vector<string> words;
-	string *tempStr = new string;
+	set<string> booleanOperatorsWords;
+	booleanOperatorsWords.insert("&&");
+	booleanOperatorsWords.insert("||");
 
-	for (unsigned i = 0; i < query.size(); i++) {
-		char currentChar = query.at(i);
+	QueryProcessor queryProcessor(vocabularyFileName, urlsFileName,
+			invertedFileName);
 
-		if (currentChar == ' ' || i == (query.size() - 1)) {
-			tempStr->append(1, currentChar);
-			words.push_back(*tempStr);
-			tempStr = new string;
+	bool endSearch = false;
+	while (!endSearch) {
+		vector<string> input;
+		set<string> words;
+		set<string> docs;
 
-		} else {
-			tempStr->append(1, currentChar);
+		string query;
+		cout << "\nBusca >> ";
+		getline(cin, query);
+
+		tokenize(query, input, " ");
+
+		bool expectOperator = false;
+
+		vector<string>::iterator inputIter;
+		for (inputIter = input.begin(); inputIter != input.end(); inputIter++) {
+			if (expectOperator && (booleanOperatorsWords.find(*inputIter)
+					== booleanOperatorsWords.end())) {
+				cerr << "Entrada inválida!" << endl;
+				endSearch = true;
+				break;
+			}
 		}
 	}
 
-	//	for (unsigned i = 0; i < words.size(); i++) {
-	//		cout << words[i] << endl;
+	//	string *tempStr = new string;
+	//
+	//	for (unsigned i = 0; i < query.size(); i++) {
+	//		char currentChar = query.at(i);
+	//
+	//		if (currentChar == ' ' || i == (query.size() - 1)) {
+	//			tempStr->append(1, currentChar);
+	//			words.push_back(*tempStr);
+	//			tempStr = new string;
+	//
+	//		} else {
+	//			tempStr->append(1, currentChar);
+	//		}
 	//	}
+	//
+	//	vector<string> docs;
+	//	QueryProcessor queryProcessor(words, docs);
+	//
+	//	cout << "\nResultados:\n\n";
 
-	cout << "\nResultados:\n";
+	//	queryProcessor.query(words, QueryProcessor::OR, docs);
 
 	return 0;
 }

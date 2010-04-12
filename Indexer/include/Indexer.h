@@ -42,9 +42,12 @@ private:
 	string tempDir;
 	string tempFilePrefix;
 	string finalTempFileName;
-	string indexFileName;
+	string indexFileNamePrefix;
 	int runSize;
 	int k;
+	int lastDocumentEntry;
+	int lastPositionEntry;
+
 	CollectionReader *reader;
 
 	map<string, int> vocabulary;
