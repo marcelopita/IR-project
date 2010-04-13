@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <vector>
+#include <algorithm>
 
 #include "../include/Indexer.h"
 #include "../include/QueryProcessor.h"
@@ -33,66 +34,74 @@ void tokenize(const string& str, vector<string>& tokens,
 	}
 }
 
+void resultsUnion(set<string>& s1, set<string>& s2, set<string>& result) {
+	set<string> s;
+	set_union(s1.begin(), s1.end(), s2.begin(), s2.end(),
+			inserter(s, s.begin()));
+	result = s;
+}
+
+void resultsIntersection(set<string>& s1, set<string>& s2, set<string>& result) {
+	set<string> s;
+	set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), inserter(s,
+			s.begin()));
+	result = s;
+}
+
 int processQueries() {
-	cout << "*** PROCESSAMENTO DE CONSULTA ***\n";
+	cout << "\n*** PROCESSAMENTO DE CONSULTA ***\n";
 
 	string vocabularyFileName = "vocabulary";
 	string urlsFileName = "urls";
 	string invertedFileName = "inverted_file";
 
-	set<string> booleanOperatorsWords;
-	booleanOperatorsWords.insert("&&");
-	booleanOperatorsWords.insert("||");
-
+	cout << endl;
 	QueryProcessor queryProcessor(vocabularyFileName, urlsFileName,
 			invertedFileName);
 
-	bool endSearch = false;
-	while (!endSearch) {
+	while (true) {
 		vector<string> input;
 		set<string> words;
 		set<string> docs;
 
 		string query;
-		cout << "\nBusca >> ";
+		cout << "\n-----------------------------------------";
+		cout << "\nBuscar >> ";
 		getline(cin, query);
 
 		tokenize(query, input, " ");
 
-		bool expectOperator = false;
+		if (input.size() == 1 && input[0] == "quit")
+			break;
 
 		vector<string>::iterator inputIter;
 		for (inputIter = input.begin(); inputIter != input.end(); inputIter++) {
-			if (expectOperator && (booleanOperatorsWords.find(*inputIter)
-					== booleanOperatorsWords.end())) {
-				cerr << "Entrada inválida!" << endl;
-				endSearch = true;
-				break;
+			if (*inputIter == "and") {
+				if ((++inputIter) != input.end()) {
+					set<string> singleTermResult;
+					queryProcessor.querySingleTerm(*inputIter, singleTermResult);
+					resultsIntersection(docs, singleTermResult, docs);
+				}
+
+			} else if (*inputIter == "or") {
+				if ((++inputIter) != input.end()) {
+					set<string> singleTermResult;
+					queryProcessor.querySingleTerm(*inputIter, singleTermResult);
+					resultsUnion(docs, singleTermResult, docs);
+				}
+
+			} else {
+				queryProcessor.querySingleTerm(*inputIter, docs);
 			}
 		}
+
+		cout << "\nResultados:\n\n";
+
+		set<string>::iterator docsIter;
+		for (docsIter = docs.begin(); docsIter != docs.end(); docsIter++) {
+			cout << "\t" << *docsIter << endl;
+		}
 	}
-
-	//	string *tempStr = new string;
-	//
-	//	for (unsigned i = 0; i < query.size(); i++) {
-	//		char currentChar = query.at(i);
-	//
-	//		if (currentChar == ' ' || i == (query.size() - 1)) {
-	//			tempStr->append(1, currentChar);
-	//			words.push_back(*tempStr);
-	//			tempStr = new string;
-	//
-	//		} else {
-	//			tempStr->append(1, currentChar);
-	//		}
-	//	}
-	//
-	//	vector<string> docs;
-	//	QueryProcessor queryProcessor(words, docs);
-	//
-	//	cout << "\nResultados:\n\n";
-
-	//	queryProcessor.query(words, QueryProcessor::OR, docs);
 
 	return 0;
 }

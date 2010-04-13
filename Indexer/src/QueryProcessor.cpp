@@ -19,6 +19,8 @@
 
 QueryProcessor::QueryProcessor(string& vocabularyFileName,
 		string& urlsFileName, string& invertedFileName) {
+	cout << "Carregando vocabulário... ";
+	flush(cout);
 	ifstream vocabularyFile(vocabularyFileName.c_str());
 	while (!vocabularyFile.eof()) {
 		int termNumber;
@@ -38,7 +40,11 @@ QueryProcessor::QueryProcessor(string& vocabularyFileName,
 		vocabulary.insert(make_pair(termStr, termNumber));
 	}
 	vocabularyFile.close();
+	cout << "OK!" << endl;
+	flush(cout);
 
+	cout << "Carregando URLs... ";
+	flush(cout);
 	ifstream urlsFile(urlsFileName.c_str());
 	while (!urlsFile.eof()) {
 		string url;
@@ -46,6 +52,8 @@ QueryProcessor::QueryProcessor(string& vocabularyFileName,
 		urls.push_back(url);
 	}
 	urlsFile.close();
+	cout << "OK!" << endl;
+	flush(cout);
 
 	this->indexFileNamePrefix = invertedFileName;
 }
@@ -108,30 +116,19 @@ int QueryProcessor::changeCharSet(const string& from, const string& to,
 	return 1;
 }
 
-void QueryProcessor::unionOp(set<set<int> >& sets, set<int>& unionSet) {
-	set<int> s;
-	set<set<int> >::iterator setsIter;
-	for (setsIter = sets.begin(); setsIter != sets.end(); setsIter++) {
-		//		unionSet.insert(setsIter->begin(), setsIter->end());
-		set_union(setsIter->begin(), setsIter->end(), unionSet.begin(),
-				unionSet.end(), inserter(s, s.begin()));
-		unionSet = s;
-	}
-}
+void QueryProcessor::querySingleTerm(string& word, set<string>& docs) {
+	transform(word.begin(), word.end(), word.begin(), (int(*)(int)) tolower);
+	changeCharSet("UTF-8", "ASCII//TRANSLIT", word);
 
-void QueryProcessor::intersectionOp(set<set<int> >& sets,
-		set<int>& intersectionSet) {
-	set<int> s;
-	set<set<int> >::iterator setsIter;
-	for (setsIter = sets.begin(); setsIter != sets.end(); setsIter++) {
-		set_intersection(setsIter->begin(), setsIter->end(),
-				intersectionSet.begin(), intersectionSet.end(), inserter(s,
-						s.begin()));
-		intersectionSet = s;
-	}
-}
+	int wordNumber;
 
-void QueryProcessor::getDocsAllWords(set<int>& words, set<int>& docs) {
+	map<string, int>::iterator wordRef = this->vocabulary.find(word);
+	if (wordRef != this->vocabulary.end()) {
+		wordNumber = wordRef->second;
+	}
+
+//	docs.clear();
+
 	ostringstream termsFileNameStream;
 	termsFileNameStream << this->indexFileNamePrefix << "_terms";
 	ifstream termsFile(termsFileNameStream.str().c_str());
@@ -140,127 +137,39 @@ void QueryProcessor::getDocsAllWords(set<int>& words, set<int>& docs) {
 	docsFileNameStream << this->indexFileNamePrefix << "_docs";
 	ifstream docsFile(docsFileNameStream.str().c_str());
 
-	set<set<int> > docsPerWord;
-
-	set<int>::iterator wordsIter;
-	for (wordsIter = words.begin(); wordsIter != words.end(); wordsIter++) {
-		set<int> wordDocs;
-
-		termsFile.seekg(sizeof(int) * ((*wordsIter) * 3 + 2));
-
-		int docsListRef;
-		if (termsFile.read((char*) &docsListRef, sizeof(int)) <= 0)
-			continue;
-
-		docsFile.seekg(sizeof(int) * (1 + (*wordsIter) * 3));
-
-		int numDocs;
-		if (docsFile.read((char*) &numDocs, sizeof(int)) <= 0)
-			continue;
-
-		for (int i = 0; i < numDocs; i++) {
-			int docNumber;
-			if (docsFile.read((char*) &docNumber, sizeof(int)) <= 0)
-				continue;
-			wordDocs.insert(docNumber);
-
-			int temp;
-			if (docsFile.read((char*) &temp, sizeof(int)) <= 0)
-				continue;
-			if (docsFile.read((char*) &temp, sizeof(int)) <= 0)
-				continue;
-		}
-
-		docsPerWord.insert(wordDocs);
-	}
-
-	intersectionOp(docsPerWord, docs);
-}
-
-void QueryProcessor::getDocsSomeWord(set<int>& words, set<int>& docs) {
-	ostringstream termsFileNameStream;
-	termsFileNameStream << this->indexFileNamePrefix << "_terms";
-	ifstream termsFile(termsFileNameStream.str().c_str());
-
-	ostringstream docsFileNameStream;
-	docsFileNameStream << this->indexFileNamePrefix << "_docs";
-	ifstream docsFile(docsFileNameStream.str().c_str());
-
-	//	ostringstream posFileNameStream;
-	//	posFileNameStream << this->indexFileNamePrefix << "_pos";
-	//	ifstream posFile(posFileNameStream.str().c_str());
-
-	set<set<int> > docsPerWord;
-
-	set<int>::iterator wordsIter;
-	for (wordsIter = words.begin(); wordsIter != words.end(); wordsIter++) {
-		set<int> wordDocs;
-
-		termsFile.seekg((*wordsIter) * 3 * sizeof(int));
-
-		int termNumber;
-		if (termsFile.read((char*) &termNumber, sizeof(int)) <= 0)
-			continue;
-
-		int tf;
-		if (termsFile.read((char*) &tf, sizeof(int)) <= 0)
-			continue;
-
-		int docsRef;
-		if (termsFile.read((char*) &docsRef, sizeof(int)) <= 0) {
-			continue;
-		}
-
-		docsFile.seekg(docsRef * 3 * sizeof(int));
-		for (int i = 0; i < tf; i++) {
-			int docNumber;
-			if (docsFile.read((char*) &docNumber, sizeof(int)) <= 0) {
-				continue;
-			}
-
-			int temp;
-			if (docsFile.read((char*) &temp, sizeof(int)) <= 0) {
-				continue;
-			}
-			if (docsFile.read((char*) &temp, sizeof(int)) <= 0) {
-				continue;
-			}
-
-			cout << docNumber << ", ";
-
-			wordDocs.insert(docNumber);
-		}
-
-		docsPerWord.insert(wordDocs);
-	}
-
-	unionOp(docsPerWord, docs);
-}
-
-void QueryProcessor::query(set<string>& words, int mode, set<string>& docs) {
-	set<int> wordsNumbers;
-
-	set<string>::iterator wordsIter;
-	for (wordsIter = words.begin(); wordsIter != words.end(); wordsIter++) {
-		string word = *wordsIter;
-		transform(word.begin(), word.end(), word.begin(), (int(*)(int)) tolower);
-		changeCharSet("UTF-8", "ASCII//TRANSLIT", word);
-
-		map<string, int>::iterator wordRef = this->vocabulary.find(word);
-		if (wordRef != this->vocabulary.end()) {
-			cout << wordRef->first << ": " << wordRef->second << endl;
-			wordsNumbers.insert(wordRef->second);
-		}
-	}
-
-	docs.clear();
 	set<int> docsNumbers;
 
-	if (mode == AND) {
-		getDocsAllWords(wordsNumbers, docsNumbers);
+	termsFile.seekg(wordNumber * 3 * sizeof(int));
 
-	} else if (mode == OR) {
-		getDocsSomeWord(wordsNumbers, docsNumbers);
+	int termNumber;
+	if (termsFile.read((char*) &termNumber, sizeof(int)) <= 0)
+		return;
+
+	int tf;
+	if (termsFile.read((char*) &tf, sizeof(int)) <= 0)
+		return;
+
+	int docsRef;
+	if (termsFile.read((char*) &docsRef, sizeof(int)) <= 0) {
+		return;
+	}
+
+	docsFile.seekg(docsRef * 3 * sizeof(int));
+	for (int i = 0; i < tf; i++) {
+		int docNumber;
+		if (docsFile.read((char*) &docNumber, sizeof(int)) <= 0) {
+			continue;
+		}
+
+		int temp;
+		if (docsFile.read((char*) &temp, sizeof(int)) <= 0) {
+			continue;
+		}
+		if (docsFile.read((char*) &temp, sizeof(int)) <= 0) {
+			continue;
+		}
+
+		docsNumbers.insert(docNumber);
 	}
 
 	set<int>::iterator docsNumbersIter;

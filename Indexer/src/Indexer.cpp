@@ -430,8 +430,6 @@ void Indexer::saveTriplesVectorTempFile() {
 		tempFile.write((char*) &(triple.termNumber), sizeof(int));
 		tempFile.write((char*) &(triple.docNumber), sizeof(int));
 		tempFile.write((char*) &(triple.termPosition), sizeof(int));
-
-		//		tempFile.write((char*) &(this->kTriples.at(j)), sizeof(TempFileTriple));
 	}
 	tempFile.close();
 
@@ -504,7 +502,7 @@ void Indexer::writeInvertedFile() {
 	posFileNameStream << this->indexFileNamePrefix << "_pos";
 	ofstream posFile(posFileNameStream.str().c_str(), ios_base::app);
 
-	cout << "<(";
+	//	cout << "<(";
 
 	int termNumber = this->triplesPerTerm[0].termNumber;
 	int termFrequency = triplesPerDocs.size();
@@ -514,7 +512,7 @@ void Indexer::writeInvertedFile() {
 	termsFile.write((char*) &termFrequency, sizeof(int));
 	termsFile.write((char*) &lastDocumentEntry, sizeof(int));
 
-	cout << termNumber << ", " << termFrequency << ") -> [";
+	//	cout << termNumber << ", " << termFrequency << ") -> [";
 
 	vector<vector<TempFileTriple> >::iterator triplesPerDocsIter;
 	for (triplesPerDocsIter = triplesPerDocs.begin(); triplesPerDocsIter
@@ -527,8 +525,8 @@ void Indexer::writeInvertedFile() {
 		docsFile.write((char*) &(termFreqDoc), sizeof(int));
 		docsFile.write((char*) &lastPositionEntry, sizeof(int));
 
-		cout << "(" << triplesPerDocsIter->at(0).docNumber << ", "
-				<< termFreqDoc << ", [";
+		//		cout << "(" << triplesPerDocsIter->at(0).docNumber << ", "
+		//				<< termFreqDoc << ", [";
 
 		vector<TempFileTriple>::iterator tpdIter;
 		for (tpdIter = triplesPerDocsIter->begin(); tpdIter
@@ -537,17 +535,17 @@ void Indexer::writeInvertedFile() {
 
 			posFile.write((char*) &(tpdIter->termPosition), sizeof(int));
 
-			cout << tpdIter->termPosition;
-
-			if ((tpdIter + 1) != triplesPerDocsIter->end()) {
-				cout << ", ";
-			}
+			//			cout << tpdIter->termPosition;
+			//
+			//			if ((tpdIter + 1) != triplesPerDocsIter->end()) {
+			//				cout << ", ";
+			//			}
 		}
 
-		cout << "])";
+		//		cout << "])";
 	}
 
-	cout << "]>" << endl << endl;
+	//	cout << "]>" << endl << endl;
 
 	termsFile.close();
 	docsFile.close();
@@ -561,17 +559,17 @@ void Indexer::mergeSortedRuns() {
 	vector<RunTriple> heap;
 	vector<ifstream*> tempFiles;
 
-	cout << "--- TEMP FILES ---" << endl;
+	//	cout << "--- TEMP FILES ---" << endl;
 
 	for (int i = 0; i < this->numRuns; i++) {
 		ostringstream tempFileNameStream;
 		tempFileNameStream << this->tempDir << this->tempFilePrefix << i
 				<< ".tmp";
-		cout << tempFileNameStream.str() << endl;
+		//		cout << tempFileNameStream.str() << endl;
 		tempFiles.push_back(new ifstream(tempFileNameStream.str().c_str()));
 	}
 
-	cout << "-------------------" << endl;
+	//	cout << "-------------------" << endl;
 
 	// INITIAL HEAP POPULATION
 
@@ -603,24 +601,16 @@ void Indexer::mergeSortedRuns() {
 
 		runTriple.triple = triple;
 
-		//		if (tempFiles[i]->read((char*) &(runTriple.triple),
-		//				sizeof(TempFileTriple)) <= 0) {
-		//			continue;
-		//		}
-
 		runTriple.runId = i;
-		//		printTriple(runTriple.triple);
 		heap.push_back(runTriple);
 		push_heap(heap.begin(), heap.end(), greaterRunTriple);
-
-		//		printTriple(runTriple.triple);
 	}
 
 	//	cout << "-----------------------------" << endl;
 
 	// POP AND PUSH HEAP
 
-	cout << "--- SORTED TRIPLES ---" << endl;
+//	cout << "--- SORTED TRIPLES ---" << endl;
 
 	while (!heap.empty()) {
 		// POP
@@ -665,13 +655,6 @@ void Indexer::mergeSortedRuns() {
 
 		runTriple.triple = triple;
 
-		//		if (tempFiles[popRunTriple.runId]->read((char*) &(runTriple.triple),
-		//				sizeof(TempFileTriple)) <= 0) {
-		//			continue;
-		//		}
-
-		//		printTriple(runTriple.triple);
-
 		runTriple.runId = popRunTriple.runId;
 		heap.push_back(runTriple);
 		push_heap(heap.begin(), heap.end(), greaterRunTriple);
@@ -683,7 +666,7 @@ void Indexer::mergeSortedRuns() {
 		this->triplesPerTerm.clear();
 	}
 
-	cout << "-----------------------" << endl;
+	//	cout << "-----------------------" << endl;
 
 	for (int i = 0; i < (int) this->numRuns; i++) {
 		tempFiles[i]->close();
@@ -696,88 +679,6 @@ void Indexer::mergeSortedRuns() {
 	//
 	//	rmdir("tmp");
 }
-
-///**
-// * Merge sorted runs.
-// */
-//void Indexer::mergeSortedRuns() {
-//	int heapSize = this->sortedRuns.size();
-//	int tripleSize = sizeof(TempFileTriple);
-//	vector<RunTriple> heap;
-//
-//	ifstream tempFile(this->tempFileName.c_str());
-//	ofstream tempFileFinal(this->finalTempFileName.c_str(), ios_base::app);
-//
-//	cout << "----- FIRST HEAP POPULATION ----" << endl;
-//
-//	// INITIAL HEAP POPULATION
-//
-//	for (int j = 0; j < heapSize; j++) {
-//		SortedRun run = this->sortedRuns[j];
-//
-//		int readPosition = tripleSize * run.begin;
-//
-//		TempFileTriple triple;
-//
-//		tempFile.seekg(readPosition);
-//		if (tempFile.read((char*) &triple, sizeof(TempFileTriple)) <= 0)
-//			continue;
-//
-//		printTriple(triple);
-//
-//		run.current += 1;
-//
-//		RunTriple runTriple;
-//		runTriple.runId = run.id;
-//		runTriple.triple = triple;
-//
-////		cout << "\t" << runTriple.runId << endl;
-//
-//		heap.push_back(runTriple);
-//		push_heap(heap.begin(), heap.end(), greaterRunTriple);
-//	}
-//
-//	cout << "-----------------------------" << endl;
-//
-//	// POP AND PUSH HEAP
-//
-//	while (!heap.empty()) {
-//		RunTriple popRunTriple = heap.front();
-//		pop_heap(heap.begin(), heap.end(), greaterRunTriple);
-//		heap.pop_back();
-//		int runId = popRunTriple.runId;
-//
-//		tempFileFinal.write((char*) &(popRunTriple.triple),
-//				sizeof(TempFileTriple));
-//
-////		printTriple(popRunTriple.triple);
-//
-//		SortedRun run = this->sortedRuns[runId];
-//		if (run.current >= run.end)
-//			continue;
-//		int readPosition = tripleSize * run.begin + tripleSize * run.current;
-//
-//		TempFileTriple triple;
-//
-//		tempFile.seekg(readPosition);
-//		if (tempFile.read((char*) &triple, sizeof(TempFileTriple)) <= 0) {
-//			cout << readPosition << " ** " << tripleSize * run.end << endl;
-//			continue;
-//		}
-//
-//		run.current += 1;
-//
-//		RunTriple runTriple;
-//		runTriple.runId = runId;
-//		runTriple.triple = triple;
-//
-////		heap.push_back(runTriple);
-////		push_heap(heap.begin(), heap.end(), greaterRunTriple);
-//	}
-//
-//	tempFile.close();
-//	tempFileFinal.close();
-//}
 
 /*
  * Index collection terms and documents.
@@ -910,12 +811,14 @@ int Indexer::index() {
 		doc.clear();
 		i++;
 
-		if (docNumber % 300 == 0)
-			cout << docNumber << endl;
-
-		if (docNumber >= 5) {
-			break;
+		if (docNumber % 3000 == 0) {
+			cout << docNumber << "\t";
+			flush(cout);
 		}
+
+		//		if (docNumber >= 5) {
+		//			break;
+		//		}
 	}
 
 	// SAVE REMAINING TRIPLES IN THE COMPRESSED TEMPORARY FILE
@@ -927,6 +830,8 @@ int Indexer::index() {
 	}
 
 	// SAVE VOCABULARY
+
+	cout << endl << "SAVING VOCABULARY... ";
 
 	ofstream vocabFile("vocabulary");
 	map<string, int>::iterator vocabIter;
@@ -940,7 +845,11 @@ int Indexer::index() {
 	}
 	vocabFile.close();
 
+	cout << "OK!" << endl;
+
 	// SAVE URLS
+
+	cout << "SAVING URLS... ";
 
 	ofstream docsFile("urls");
 	vector<string>::iterator docsIter;
@@ -949,9 +858,15 @@ int Indexer::index() {
 	}
 	docsFile.close();
 
+	cout << "OK!" << endl;
+
 	// MERGE SORTED RUNS AND SAVE INVERTED FILE
 
+	cout << "SAVING INVERTED FILE... ";
+
 	mergeSortedRuns();
+
+	cout << "OK!" << endl;
 
 	// PRINT USEFUL INFORMATION
 
@@ -960,8 +875,8 @@ int Indexer::index() {
 	cout << "Invalid content type:\t" << numDocsInvalidContentType << endl;
 	cout << "Unknown char set:\t" << numDocsUnknownCharSet << endl;
 	cout << "Useful documents:\t" << lastDocNumber << endl;
-	cout << "Number of triples:\t" << numTriplesSaved << endl;
 	cout << "Number of terms:\t" << vocabulary.size() << endl;
+	cout << "Number of triples:\t" << numTriplesSaved << endl;
 
 	return 0;
 }

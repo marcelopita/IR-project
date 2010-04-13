@@ -23,11 +23,13 @@ public:
 
 	~QueryProcessor();
 
-	void query(set<string>&, int, set<string>&);
+	//	void query(set<string>&, int, set<string>&);
 
-	const static int AND = 0;
+	void querySingleTerm(string&, set<string>&);
 
-	const static int OR = 1;
+	//	const static int AND = 0;
+	//
+	//	const static int OR = 1;
 
 private:
 
@@ -37,15 +39,15 @@ private:
 
 	string indexFileNamePrefix;
 
-	void getDocsAllWords(set<int>&, set<int>&);
-
-	void getDocsSomeWord(set<int>&, set<int>&);
+	//	void getDocsAllWords(set<int>&, set<int>&);
+	//
+	//	void getDocsSomeWord(set<int>&, set<int>&);
 
 	int changeCharSet(const string&, const string&, string&);
 
-	void unionOp(set<set<int> >&, set<int>&);
-
-	void intersectionOp(set<set<int> >&, set<int>&);
+	//	void unionOp(set<set<int> >&, set<int>&);
+	//
+	//	void intersectionOp(set<set<int> >&, set<int>&);
 
 };
 
