@@ -95,14 +95,6 @@ private:
 
 	int filterInvalidHTTPHeader(string &docText);
 
-	//	int preprocessDocument(Document &doc, string &usefulText,
-	//			int &numDocsInvalidHTTPHeader, int &numDocsInvalidContentType,
-	//			int &numDocsUnknownCharSet);
-
-	//	void sortTempFile();
-
-	//	void sortTriples();
-
 };
 
 #endif /* INDEXER_H_ */
