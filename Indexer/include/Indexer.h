@@ -17,7 +17,7 @@
 using namespace std;
 using namespace RICPNS;
 
-struct TempFileTriple;
+struct Triple;
 struct RunTriple;
 
 class Indexer {
@@ -52,8 +52,8 @@ private:
 
 	map<string, int> vocabulary;
 	vector<string> documents;
-	vector<TempFileTriple> kTriples;
-	vector<TempFileTriple> triplesPerTerm;
+	vector<Triple> kTriples;
+	vector<Triple> triplesPerTerm;
 	int numRuns;
 	int numTriplesSaved;
 
@@ -79,21 +79,19 @@ private:
 
 	void saveTriplesTempFile(vector<string>&, int);
 
+	void saveTripleTempFile(string&, int&, int&);
+
 	void saveTriplesVectorTempFile();
 
 	void writeInvertedFile();
 
 	void mergeSortedRuns();
 
-	string whitespaces1;
-	string whitespaces2;
-
 	void trim(std::string &str, const std::string &whitespaces);
 
-	void tokenize(const string& str, vector<string>& tokens,
-			const string& delimiters, bool lowerCase);
+	void tokenize2(const string&, vector<string>&, bool);
 
-	int filterInvalidHTTPHeader(string &docText);
+	void tokenize(const string&, vector<string>&, const string&, bool);
 
 };
 

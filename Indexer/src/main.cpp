@@ -109,7 +109,7 @@ int processQueries() {
 int indexCollection(string *collectionDirectory,
 		string *collectionIndexFileName, string *tempFileNamePrefix,
 		string *indexFileName, int runSize) {
-	cout << "Indexing collection..." << endl;
+	cout << "\n*** INDEXAÇÃO DE COLEÇÃO ***\n";
 
 	Indexer indexer(*collectionDirectory, *collectionIndexFileName,
 			*tempFileNamePrefix, *indexFileName, runSize);
