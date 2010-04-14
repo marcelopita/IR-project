@@ -25,6 +25,7 @@
 #include <malloc.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include "../include/HTML_Parser.h"
 
 struct Triple {
 	int termNumber;
@@ -317,33 +318,38 @@ int Indexer::changeCharSet(const string& from, const string& to,
  *
  */
 void Indexer::extractUsefulContent(string& htmlText, string& usefulText) {
-	using namespace htmlcxx::HTML;
-
-	ParserDom parser;
-	parser.parse(htmlText);
-	tree<Node> rootNode = parser.getTree();
-
-	tree<Node>::iterator it = rootNode.begin();
-	tree<Node>::iterator end = rootNode.end();
-
-	for (; it != end; ++it) {
-		if (!it->isTag() && !it->isComment()) {
-			tree<Node>::iterator parent = rootNode.parent(it);
-			if (parent->isTag() && (parent->tagName() == "script"
-					|| parent->tagName() == "SCRIPT" || parent->tagName()
-					== "STYLE" || parent->tagName() == "style")) {
-				continue;
-			}
-
-			string itText(it->text());
-			this->trim(itText, " \t\n\r,;|()/\\{}");
-			if (itText.empty())
-				continue;
-
-			usefulText.append(it->text());
-			usefulText.append(" ");
-		}
-	}
+	HTML_Parser htmlParser;
+	htmlParser.setSearchingCharset(false);
+	htmlParser.parse(htmlText);
+	htmlParser.getText(usefulText);
+	//
+	//	using namespace htmlcxx::HTML;
+	//
+	//	ParserDom parser;
+	//	parser.parse(htmlText);
+	//	tree<Node> rootNode = parser.getTree();
+	//
+	//	tree<Node>::iterator it = rootNode.begin();
+	//	tree<Node>::iterator end = rootNode.end();
+	//
+	//	for (; it != end; ++it) {
+	//		if (!it->isTag() && !it->isComment()) {
+	//			tree<Node>::iterator parent = rootNode.parent(it);
+	//			if (parent->isTag() && (parent->tagName() == "script"
+	//					|| parent->tagName() == "SCRIPT" || parent->tagName()
+	//					== "STYLE" || parent->tagName() == "style")) {
+	//				continue;
+	//			}
+	//
+	//			string itText(it->text());
+	//			this->trim(itText, " \t\n\r,;|()/\\{}");
+	//			if (itText.empty())
+	//				continue;
+	//
+	//			usefulText.append(it->text());
+	//			usefulText.append(" ");
+	//		}
+	//	}
 }
 
 /**
@@ -666,7 +672,6 @@ void Indexer::mergeSortedRuns() {
  * Register current memory allocation.
  */
 void saveMemTime(ofstream& memTimeFile, int initialTime) {
-	return;
 	struct rusage usage;
 	getrusage(RUSAGE_SELF, &usage);
 	double timeElapsed = (double) (1000000 * usage.ru_utime.tv_sec
@@ -691,7 +696,7 @@ int Indexer::index() {
 	long indexingTimeSec;
 	getrusage(RUSAGE_SELF, &usage);
 	long indexingT0 = 1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec;
-	saveMemTime(memTimeFile, indexingT0);
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	this->reader = new CollectionReader(this->collectionDirectory,
 			this->collectionIndexFileName);
@@ -713,11 +718,11 @@ int Indexer::index() {
 
 		/* --- START PARSING --- */
 		// Begin parsing timing
-		//		clock_t parsingT0 = clock();
+		getrusage(RUSAGE_SELF, &usage);
 		long parsingT0 = 1000000 * usage.ru_utime.tv_sec
 				+ usage.ru_utime.tv_usec;
-		// Verify memory allocation before parsing
-		saveMemTime(memTimeFile, indexingT0);
+		//		// Verify memory allocation before parsing
+		//		saveMemTime(memTimeFile, indexingT0);
 
 		string fullText = doc.getText();
 
@@ -745,14 +750,6 @@ int Indexer::index() {
 			continue;
 		}
 
-		/* --- END PARSING --- */
-		// End parsing timing
-		getrusage(RUSAGE_SELF, &usage);
-		totalParsingTime += (1000000 * usage.ru_utime.tv_sec
-				+ usage.ru_utime.tv_usec - parsingT0);
-		// Verify memory allocation after parsing
-		saveMemTime(memTimeFile, indexingT0);
-
 		// GET CHAR SET FROM HEADER OR HTML META TAG
 
 		string charset, charsetHeader, charsetMetaTag;
@@ -761,7 +758,11 @@ int Indexer::index() {
 
 		if (contentType == "html") {
 			string iso88591Content = htmlcxx::HTML::decode_entities(content);
-			getCharSetMetaTag(iso88591Content, charsetMetaTag);
+			HTML_Parser htmlParser;
+			htmlParser.setSearchingCharset(true);
+			htmlParser.parse(iso88591Content);
+			htmlParser.getCharset(charsetMetaTag);
+			//			getCharSetMetaTag(iso88591Content, charsetMetaTag);
 
 		} else {
 			charsetMetaTag = "";
@@ -827,6 +828,14 @@ int Indexer::index() {
 		this->documents.push_back(doc.getURL());
 		int docNumber = lastDocNumber++;
 
+		/* --- END PARSING --- */
+		// End parsing timing
+		getrusage(RUSAGE_SELF, &usage);
+		totalParsingTime += (1000000 * usage.ru_utime.tv_sec
+				+ usage.ru_utime.tv_usec - parsingT0);
+		//		// Verify memory allocation after parsing
+		//		saveMemTime(memTimeFile, indexingT0);
+
 		// GET INDEXABLE TERMS IN LOWER CASE
 
 		vector<string> indexableTerms;
@@ -841,8 +850,8 @@ int Indexer::index() {
 		getrusage(RUSAGE_SELF, &usage);
 		long triplesT0 = 1000000 * usage.ru_utime.tv_sec
 				+ usage.ru_utime.tv_usec;
-		// Verify memory allocation before triples saving
-		saveMemTime(memTimeFile, indexingT0);
+		//		// Verify memory allocation before triples saving
+		//		saveMemTime(memTimeFile, indexingT0);
 
 		saveTriplesTempFile(indexableTerms, docNumber);
 
@@ -851,18 +860,19 @@ int Indexer::index() {
 		getrusage(RUSAGE_SELF, &usage);
 		totalTriplesTime += (1000000 * usage.ru_utime.tv_sec
 				+ usage.ru_utime.tv_usec - triplesT0);
-		// Verify memory allocation after triples saving
-		saveMemTime(memTimeFile, indexingT0);
+		//		// Verify memory allocation after triples saving
+		//		saveMemTime(memTimeFile, indexingT0);
 
 		doc.clear();
 		i++;
 
-		if (docNumber % 500 == 0) {
+		if (docNumber % 3000 == 0) {
+			saveMemTime(memTimeFile, indexingT0);
 			cout << docNumber << "\t";
 			flush(cout);
 		}
 
-		if (docNumber >= 999) {
+		if (docNumber >= 8999) {
 			break;
 		}
 	}
@@ -873,8 +883,8 @@ int Indexer::index() {
 	// Begin remaninig triples saving timing
 	getrusage(RUSAGE_SELF, &usage);
 	long triplesT0 = 1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec;
-	// Verify memory allocation before remaining triples saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation before remaining triples saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	if ((int) this->kTriples.size() > 0) {
 		sort(this->kTriples.begin(), this->kTriples.end(), lesserTriple);
@@ -887,8 +897,8 @@ int Indexer::index() {
 	getrusage(RUSAGE_SELF, &usage);
 	totalTriplesTime += (1000000 * usage.ru_utime.tv_sec
 			+ usage.ru_utime.tv_usec - triplesT0);
-	// Verify memory allocation after remaining triples saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation after remaining triples saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	// SAVE VOCABULARY
 
@@ -898,8 +908,8 @@ int Indexer::index() {
 	// Start saving vocabulary
 	getrusage(RUSAGE_SELF, &usage);
 	long vocabT0 = 1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec;
-	// Verify memory allocation before vocabulary saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation before vocabulary saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	ofstream vocabFile("vocabulary");
 	map<string, int>::iterator vocabIter;
@@ -918,8 +928,8 @@ int Indexer::index() {
 	getrusage(RUSAGE_SELF, &usage);
 	long vocabTime = (1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec
 			- vocabT0);
-	// Verify memory allocation after vocabulary saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation after vocabulary saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	cout << "OK!" << endl;
 
@@ -931,8 +941,8 @@ int Indexer::index() {
 	// Start saving URLs
 	getrusage(RUSAGE_SELF, &usage);
 	long urlsT0 = 1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec;
-	// Verify memory allocation before URLs saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation before URLs saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	ofstream docsFile("urls");
 	vector<string>::iterator docsIter;
@@ -946,8 +956,8 @@ int Indexer::index() {
 	getrusage(RUSAGE_SELF, &usage);
 	long urlsTime = (1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec
 			- urlsT0);
-	// Verify memory allocation after vocabulary saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation after vocabulary saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	cout << "OK!" << endl;
 
@@ -961,8 +971,8 @@ int Indexer::index() {
 	long indexSavingTime;
 	long indexSavingT0 = 1000000 * usage.ru_utime.tv_sec
 			+ usage.ru_utime.tv_usec;
-	// Verify memory allocation before index saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation before index saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	mergeSortedRuns();
 
@@ -971,8 +981,8 @@ int Indexer::index() {
 	getrusage(RUSAGE_SELF, &usage);
 	indexSavingTime = 1000000 * usage.ru_utime.tv_sec + usage.ru_utime.tv_usec
 			- indexSavingT0;
-	// Verify memory allocation after index saving
-	saveMemTime(memTimeFile, indexingT0);
+	//	// Verify memory allocation after index saving
+	//	saveMemTime(memTimeFile, indexingT0);
 
 	cout << "OK!" << endl;
 
