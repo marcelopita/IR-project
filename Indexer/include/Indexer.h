@@ -13,6 +13,7 @@
 #include "CollectionReader.h"
 #include <vector>
 #include <map>
+#include "Util.h"
 
 using namespace std;
 using namespace RICPNS;
@@ -30,10 +31,6 @@ public:
 	~Indexer();
 
 	int index();
-
-	const static int DOC_OK = 0;
-
-	const static int DOC_BLOCKED = 1;
 
 private:
 
@@ -63,10 +60,6 @@ private:
 
 	void getCharSetHeader(string&, string&);
 
-	void getCharSetMetaTag(string&, string&);
-
-	int changeCharSet(const string&, const string&, string&);
-
 	void extractUsefulContent(string&, string&);
 
 	void compress(char*, char*);
@@ -87,11 +80,7 @@ private:
 
 	void mergeSortedRuns();
 
-	void trim(std::string &str, const std::string &whitespaces);
-
-	void tokenize2(const string&, vector<string>&, bool);
-
-	void tokenize(const string&, vector<string>&, const string&, bool);
+	void tokenizeAndSaveTriples(int, const string&, const string&, bool);
 
 };
 

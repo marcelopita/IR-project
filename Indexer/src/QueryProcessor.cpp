@@ -117,6 +117,8 @@ int QueryProcessor::changeCharSet(const string& from, const string& to,
 }
 
 void QueryProcessor::querySingleTerm(string& word, set<string>& docs) {
+	docs.clear();
+
 	transform(word.begin(), word.end(), word.begin(), (int(*)(int)) tolower);
 	changeCharSet("UTF-8", "ASCII//TRANSLIT", word);
 
@@ -125,9 +127,11 @@ void QueryProcessor::querySingleTerm(string& word, set<string>& docs) {
 	map<string, int>::iterator wordRef = this->vocabulary.find(word);
 	if (wordRef != this->vocabulary.end()) {
 		wordNumber = wordRef->second;
+	} else {
+		return;
 	}
 
-//	docs.clear();
+
 
 	ostringstream termsFileNameStream;
 	termsFileNameStream << this->indexFileNamePrefix << "_terms";
@@ -138,6 +142,7 @@ void QueryProcessor::querySingleTerm(string& word, set<string>& docs) {
 	ifstream docsFile(docsFileNameStream.str().c_str());
 
 	set<int> docsNumbers;
+	docsNumbers.clear();
 
 	termsFile.seekg(wordNumber * 3 * sizeof(int));
 

@@ -18,10 +18,6 @@ class HTML_Parser : public ParserSax {
 
 public:
 
-	HTML_Parser();
-
-	virtual ~HTML_Parser();
-
 	void beginParsing();
 
 	void foundTag(Node node, bool isEnd);

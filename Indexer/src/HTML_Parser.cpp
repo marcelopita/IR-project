@@ -8,12 +8,6 @@
 #include "../include/HTML_Parser.h"
 #include "../include/Util.h"
 
-HTML_Parser::HTML_Parser() {
-}
-
-HTML_Parser::~HTML_Parser() {
-}
-
 void HTML_Parser::beginParsing() {
 	this->searchingCharset = false;
 	this->isInsideInvalidTag = false;

@@ -10,6 +10,8 @@
 
 #include <string>
 #include <vector>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 using namespace std;
 
@@ -17,13 +19,23 @@ class Util {
 
 public:
 
-	Util();
-
-	~Util();
-
 	static void trim(std::string&, const std::string&);
 
 	static void tokenize(const string&, vector<string>&, const string&, bool);
+
+	static void minus(struct rusage&, struct rusage&, struct rusage&);
+
+	static void plus(struct rusage&, struct rusage&, struct rusage&);
+
+	static void saveMemTime(ofstream&, struct rusage&, struct rusage&);
+
+	static string getTimeStr(struct rusage& usage);
+
+	static int changeCharSet(const string&, const string&, string&);
+
+	const static int DOC_OK = 0;
+
+	const static int DOC_BLOCKED = 1;
 
 };
 
