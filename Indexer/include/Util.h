@@ -27,11 +27,13 @@ public:
 
 	static void plus(struct rusage&, struct rusage&, struct rusage&);
 
-	static void saveMemTime(ofstream&, struct rusage&, struct rusage&);
+	static void saveMemTime(ofstream&, struct rusage&, struct rusage&, int, int);
 
 	static string getTimeStr(struct rusage& usage);
 
 	static int changeCharSet(const string&, const string&, string&);
+
+	static void removeURIUnprintableChars(string& uri);
 
 	const static int DOC_OK = 0;
 

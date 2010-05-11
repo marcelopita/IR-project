@@ -26,7 +26,8 @@ class Indexer {
 public:
 
 	Indexer(string collectionDirectory, string collectionIndexFileName,
-			string tempFileName, string indexFileName, int runSize);
+			string tempFileName, string indexFileName, int runSize,
+			int maxNumTriples, string executionDirName);
 
 	~Indexer();
 
@@ -38,9 +39,10 @@ private:
 	string collectionIndexFileName;
 	string tempDir;
 	string tempFilePrefix;
-	string finalTempFileName;
 	string indexFileNamePrefix;
 	int runSize;
+	int maxNumTriples;
+	string executionDirName;
 	int k;
 	int lastDocumentEntry;
 	int lastPositionEntry;
@@ -48,6 +50,7 @@ private:
 	CollectionReader *reader;
 
 	map<string, int> vocabulary;
+	map<int, int> docsSizes;
 	vector<string> documents;
 	vector<Triple> kTriples;
 	vector<Triple> triplesPerTerm;

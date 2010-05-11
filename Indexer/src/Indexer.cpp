@@ -95,15 +95,16 @@ void printTriple(Triple& t) {
 }
 
 Indexer::Indexer(string collectionDirectory, string collectionIndexFileName,
-		string tempFileName, string indexFileName, int runSize) {
+		string tempFileName, string indexFileName, int runSize,
+		int maxNumTriples, string executionDirName) {
 	this->collectionDirectory = collectionDirectory;
 	this->collectionIndexFileName = collectionIndexFileName;
 	this->tempFilePrefix = tempFileName;
 	this->tempDir = "tmp/";
-	this->finalTempFileName = "final";
-	this->finalTempFileName.append(tempFileName);
 	this->indexFileNamePrefix = indexFileName;
 	this->runSize = runSize;
+	this->maxNumTriples = maxNumTriples;
+	this->executionDirName = executionDirName;
 	this->k = runSize / sizeof(Triple);
 	this->numTriplesSaved = 0;
 	this->numRuns = 0;
@@ -123,18 +124,20 @@ void Indexer::tokenizeAndSaveTriples(int docNumber, const string& str,
 	string::size_type lastPos = str.find_first_not_of(delimiters, 0);
 	string::size_type pos = str.find_first_of(delimiters, lastPos);
 
-	int termPosition = 0;
+	int termCounter = 0;
 	while (string::npos != pos || string::npos != lastPos) {
 		string subStr = str.substr(lastPos, pos - lastPos);
 		if (lowerCase) {
 			transform(subStr.begin(), subStr.end(), subStr.begin(),
 					(int(*)(int)) tolower);
 		}
-		this->saveTripleTempFile(subStr, docNumber, termPosition);
-		termPosition++;
+		this->saveTripleTempFile(subStr, docNumber, termCounter);
+		termCounter++;
 		lastPos = str.find_first_not_of(delimiters, pos);
 		pos = str.find_first_of(delimiters, lastPos);
 	}
+
+	this->docsSizes[docNumber] = termCounter;
 }
 
 /*
@@ -249,8 +252,8 @@ void Indexer::extractUsefulContent(string& htmlText, string& usefulText) {
  */
 void Indexer::saveTriplesVectorTempFile() {
 	ostringstream tempFileNameStream;
-	tempFileNameStream << this->tempDir << this->tempFilePrefix << numRuns
-			<< ".tmp";
+	tempFileNameStream << this->executionDirName << "/" << this->tempDir
+			<< this->tempFilePrefix << numRuns << ".tmp";
 	ofstream tempFile(tempFileNameStream.str().c_str(), ios_base::app);
 
 	for (int j = 0; j < (int) this->kTriples.size(); j++) {
@@ -325,6 +328,14 @@ void Indexer::saveTriplesTempFile(vector<string>& terms, int docNumber) {
 	}
 }
 
+template <class T>
+bool greaterVector(vector<T> v1, vector<T> v2) {
+	if (v1.size() > v2.size())
+		return true;
+
+	return false;
+}
+
 /**
  * Write term entry in the inverted file.
  */
@@ -346,16 +357,21 @@ void Indexer::writeInvertedFile() {
 		tpd.clear();
 	}
 
+	sort(triplesPerDocs.begin(), triplesPerDocs.end(), greaterVector<Triple>);
+
 	ostringstream termsFileNameStream;
-	termsFileNameStream << this->indexFileNamePrefix << "_terms";
+	termsFileNameStream << this->executionDirName << "/"
+			<< this->indexFileNamePrefix << "_terms";
 	ofstream termsFile(termsFileNameStream.str().c_str(), ios_base::app);
 
 	ostringstream docsFileNameStream;
-	docsFileNameStream << this->indexFileNamePrefix << "_docs";
+	docsFileNameStream << this->executionDirName << "/"
+			<< this->indexFileNamePrefix << "_docs";
 	ofstream docsFile(docsFileNameStream.str().c_str(), ios_base::app);
 
 	ostringstream posFileNameStream;
-	posFileNameStream << this->indexFileNamePrefix << "_pos";
+	posFileNameStream << this->executionDirName << "/"
+			<< this->indexFileNamePrefix << "_pos";
 	ofstream posFile(posFileNameStream.str().c_str(), ios_base::app);
 
 	int termNumber = this->triplesPerTerm[0].termNumber;
@@ -399,8 +415,8 @@ void Indexer::mergeSortedRuns() {
 
 	for (int i = 0; i < this->numRuns; i++) {
 		ostringstream tempFileNameStream;
-		tempFileNameStream << this->tempDir << this->tempFilePrefix << i
-				<< ".tmp";
+		tempFileNameStream << this->executionDirName << "/" << this->tempDir
+				<< this->tempFilePrefix << i << ".tmp";
 		tempFiles.push_back(new ifstream(tempFileNameStream.str().c_str()));
 	}
 
@@ -501,18 +517,24 @@ void Indexer::mergeSortedRuns() {
  * Index collection terms and documents.
  */
 int Indexer::index() {
-	ofstream memTimeFile("mem_time.csv", ios_base::app);
+//		ostringstream memTimeFileStream;
+//		memTimeFileStream << this->executionDirName << "/mem_time.csv";
+//		ofstream memTimeFile(memTimeFileStream.str().c_str(), ios_base::app);
+//		memTimeFile << "time, memory" << endl;
+//		flush(memTimeFile);
 
 	/* STARTIG INDEXING TIMING */
 	// Start index saving timing
 	struct rusage indexingT0;
 	getrusage(RUSAGE_SELF, &indexingT0);
-	Util::saveMemTime(memTimeFile, indexingT0, indexingT0);
+	//	Util::saveMemTime(memTimeFile, indexingT0, indexingT0, 0, 0);
 
 	this->reader = new CollectionReader(this->collectionDirectory,
 			this->collectionIndexFileName);
 
-	mkdir(this->tempDir.c_str(), S_IRWXU);
+	ostringstream tempDirStream;
+	tempDirStream << this->executionDirName << "/" << this->tempDir;
+	mkdir(tempDirStream.str().c_str(), S_IRWXU);
 
 	Document doc;
 	doc.clear();
@@ -630,13 +652,19 @@ int Indexer::index() {
 
 		// ELIMINATE NOT PRINTABLE CHARACTERS
 
-		for (int k = 0; k < (int) usefulContent.size(); k++) {
-			int asciiCode = (int) usefulContent[k];
-
-			if (asciiCode < 32 || asciiCode > 126) {
-				usefulContent[k] = ' ';
+		string::iterator usefulContentIter = usefulContent.begin();
+		for (; usefulContentIter != usefulContent.end(); usefulContentIter++) {
+			if (!isprint(*usefulContentIter)) {
+				*usefulContentIter = ' ';
 			}
 		}
+//		for (int k = 0; k < (int) usefulContent.size(); k++) {
+//			int asciiCode = (int) usefulContent[k];
+//
+//			if (asciiCode < 32 || asciiCode > 126) {
+//				usefulContent[k] = ' ';
+//			}
+//		}
 
 		/* --- END PARSING --- */
 		// End parsing timing
@@ -645,7 +673,7 @@ int Indexer::index() {
 		Util::minus(parsingTime, parsingT0, parsingTime);
 		Util::plus(totalParsingTime, parsingTime, totalParsingTime);
 
-		// REGISTER DOCUMENT URL AND GET ITS NUMBER
+		// REGISTER DOC URL AND GET ITS NUMBER
 
 		this->documents.push_back(doc.getURL());
 		int docNumber = lastDocNumber++;
@@ -670,14 +698,16 @@ int Indexer::index() {
 		doc.clear();
 		i++;
 
-		if (docNumber % 3000 == 0) {
-			struct rusage currentTime;
-			getrusage(RUSAGE_SELF, &currentTime);
-			Util::saveMemTime(memTimeFile, indexingT0, currentTime);
+		if (docNumber % 5000 == 0) {
+//			struct rusage currentTime;
+//			getrusage(RUSAGE_SELF, &currentTime);
+//			Util::saveMemTime(memTimeFile, indexingT0, currentTime,
+//					vocabulary.size(), (numTriplesSaved + kTriples.size()));
 			cout << docNumber << "\t";
+			flush(cout);
 		}
 
-		if (docNumber >= 8999) {
+		if (numTriplesSaved >= this->maxNumTriples) {
 			break;
 		}
 	}
@@ -699,6 +729,8 @@ int Indexer::index() {
 	// End remaninig triples saving timing
 	struct rusage triplesTime;
 	getrusage(RUSAGE_SELF, &triplesTime);
+//	Util::saveMemTime(memTimeFile, indexingT0, triplesTime, vocabulary.size(),
+//			numTriplesSaved);
 	Util::minus(triplesTime, triplesT0, triplesTime);
 	Util::plus(totalTriplesTime, triplesTime, totalTriplesTime);
 
@@ -711,7 +743,9 @@ int Indexer::index() {
 	struct rusage vocabT0;
 	getrusage(RUSAGE_SELF, &vocabT0);
 
-	ofstream vocabFile("vocabulary");
+	ostringstream vocabStream;
+	vocabStream << this->executionDirName << "/vocabulary";
+	ofstream vocabFile(vocabStream.str().c_str());
 	map<string, int>::iterator vocabIter;
 	for (vocabIter = vocabulary.begin(); vocabIter != vocabulary.end(); vocabIter++) {
 		int termSize = vocabIter->first.size();
@@ -740,17 +774,36 @@ int Indexer::index() {
 	struct rusage urlsT0;
 	getrusage(RUSAGE_SELF, &urlsT0);
 
-	ofstream docsFile("urls");
-	vector<string>::iterator docsIter;
-	for (docsIter = documents.begin(); docsIter != documents.end(); docsIter++) {
-		docsFile << *docsIter << endl;
+	ostringstream urlsStream;
+	urlsStream << this->executionDirName << "/urls";
+	ofstream docsFile(urlsStream.str().c_str());
+
+	for (unsigned int i = 0; i < documents.size(); i++) {
+		int docSize = docsSizes[i];
+		int urlSize = documents[i].size() + 1;
+		const char *url = documents[i].c_str();
+
+		docsFile.write((char*) &docSize, sizeof(int));
+		docsFile.write((char*) &urlSize, sizeof(int));
+		docsFile.write((char*) url, urlSize * sizeof(char));
 	}
+
 	docsFile.close();
+
+//	vector<string>::iterator docsIter;
+//	for (docsIter = documents.begin(); docsIter != documents.end(); docsIter++) {
+//		docsFile.write((char*) this->docsSizes)
+////		tempFile.write((char*) &(triple.termNumber), sizeof(int));
+//		docsFile << *docsIter << endl;
+//	}
+//	docsFile.close();
 
 	/* --- END SAVING URLS --- */
 	// End saving URLs
 	struct rusage urlsTime;
 	getrusage(RUSAGE_SELF, &urlsTime);
+//	Util::saveMemTime(memTimeFile, indexingT0, urlsTime, vocabulary.size(),
+//			numTriplesSaved);
 	Util::minus(urlsTime, urlsT0, urlsTime);
 
 	cout << "OK!" << endl;
@@ -779,7 +832,8 @@ int Indexer::index() {
 	struct rusage indexingTime;
 	getrusage(RUSAGE_SELF, &indexingTime);
 	Util::minus(indexingTime, indexingT0, indexingTime);
-	Util::saveMemTime(memTimeFile, indexingT0, indexingTime);
+//	Util::saveMemTime(memTimeFile, indexingT0, indexingTime, vocabulary.size(),
+//			numTriplesSaved);
 
 	// PRINT USEFUL INFORMATION
 	cout << "\n#############################" << endl;
@@ -791,13 +845,16 @@ int Indexer::index() {
 	cout << "Number of triples:\t" << numTriplesSaved << endl;
 	cout << "Value of k:\t\t" << this->k << endl;
 	cout << "Parsing documents time:\t" << Util::getTimeStr(totalParsingTime)
-			<< endl;
+			<< " s" << endl;
 	cout << "Triples saving time:\t" << Util::getTimeStr(totalTriplesTime)
+			<< " s" << endl;
+	cout << "Vocab. saving time:\t" << Util::getTimeStr(vocabTime) << " s"
 			<< endl;
-	cout << "Vocab. saving time:\t" << Util::getTimeStr(vocabTime) << endl;
-	cout << "URLs saving time:\t" << Util::getTimeStr(urlsTime) << endl;
-	cout << "Index saving time:\t" << Util::getTimeStr(saveIndexTime) << endl;
-	cout << "Total indexing time:\t" << Util::getTimeStr(indexingTime) << endl;
+	cout << "URLs saving time:\t" << Util::getTimeStr(urlsTime) << " s" << endl;
+	cout << "Index saving time:\t" << Util::getTimeStr(saveIndexTime) << " s"
+			<< endl;
+	cout << "Total indexing time:\t" << Util::getTimeStr(indexingTime) << " s"
+			<< endl;
 
 	return 0;
 }

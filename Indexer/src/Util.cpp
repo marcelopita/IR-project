@@ -10,8 +10,10 @@
 #include <malloc.h>
 #include <fstream>
 #include <errno.h>
-
-
+#include <iconv.h>
+#include <locale.h>
+#include <algorithm>
+#include <cstring>
 
 void Util::trim(std::string &str, const std::string &whitespaces = " ") {
 	std::string::size_type pos = str.find_last_not_of(whitespaces);
@@ -68,7 +70,7 @@ void Util::plus(struct rusage &u1, struct rusage &u2, struct rusage &result) {
 string Util::getTimeStr(struct rusage& usage) {
 	ostringstream timeStr;
 	timeStr << ((double) usage.ru_utime.tv_sec
-			+ ((double) usage.ru_utime.tv_usec / 1000000.0)) << " s";
+			+ ((double) usage.ru_utime.tv_usec / 1000000.0));
 	return timeStr.str();
 }
 
@@ -76,23 +78,24 @@ string Util::getTimeStr(struct rusage& usage) {
  * Register current time and memory allocation.
  */
 void Util::saveMemTime(ofstream& memTimeFile, struct rusage& initialTime,
-		struct rusage& currentTime) {
+		struct rusage& currentTime, int vocabSize, int numTriples) {
 	struct rusage elapsedTime;
 	Util::minus(currentTime, initialTime, elapsedTime);
 	struct mallinfo info = mallinfo();
 
 	ostringstream memTimeStream;
 	memTimeStream << Util::getTimeStr(elapsedTime) << ", "
-			<< ((double) (info.usmblks + info.uordblks) / 1048576.0) << endl;
+			<< ((double) (info.usmblks + info.uordblks) / 1048576.0) << ", "
+			<< vocabSize << ", " << numTriples << endl;
 
 	memTimeFile << memTimeStream.str();
+	flush(memTimeFile);
 }
 
 /**
  * Change content's char set.
  */
-int Util::changeCharSet(const string& from, const string& to,
-		string& content) {
+int Util::changeCharSet(const string& from, const string& to, string& content) {
 	char *input = new char[content.size() + 1];
 	memset(input, 0, content.size() + 1);
 	strncpy(input, content.c_str(), content.size());
@@ -141,4 +144,27 @@ int Util::changeCharSet(const string& from, const string& to,
 	delete[] output;
 
 	return DOC_OK;
+}
+
+void Util::removeURIUnprintableChars(string& uri) {
+	string newUri;
+	newUri.reserve(uri.size());
+
+	char buffer[4];
+	buffer[3] = '\0';
+
+	string::const_iterator uriIt = uri.begin();
+
+	for (; uriIt != uri.end(); uriIt++) {
+		if (!isprint(*uriIt)) {
+			snprintf(buffer, 4, "%%%02x", *uriIt);
+			newUri.append(buffer);
+
+		} else {
+			newUri.append(1, *uriIt);
+		}
+	}
+
+	uri.clear();
+	uri.assign(newUri);
 }

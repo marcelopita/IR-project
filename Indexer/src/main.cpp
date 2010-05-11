@@ -14,39 +14,54 @@
 
 #include "../include/Indexer.h"
 #include "../include/QueryProcessor.h"
+#include "../include/BooleanProcessor.h"
+#include "../include/VectorSpaceProcessor.h"
 #include "../include/Util.h"
 
 using namespace std;
 
-void resultsUnion(set<string>& s1, set<string>& s2, set<string>& result) {
-	set<string> s;
-	set_union(s1.begin(), s1.end(), s2.begin(), s2.end(),
-			inserter(s, s.begin()));
-	result = s;
-}
-
-void resultsIntersection(set<string>& s1, set<string>& s2, set<string>& result) {
-	set<string> s;
-	set_intersection(s1.begin(), s1.end(), s2.begin(), s2.end(), inserter(s,
-			s.begin()));
-	result = s;
-}
-
-int processQueries() {
-	cout << "\n*** PROCESSAMENTO DE CONSULTA ***\n";
+int processQueries(int model) {
+	cout << "\n*** PROCESSAMENTO DE CONSULTA ***\n\n";
 
 	string vocabularyFileName = "vocabulary";
 	string urlsFileName = "urls";
 	string invertedFileName = "inverted_file";
 
-	cout << endl;
-	QueryProcessor queryProcessor(vocabularyFileName, urlsFileName,
-			invertedFileName);
+	QueryProcessor *queryProcessor = NULL;
+
+	switch (model) {
+	case QueryProcessor::BOOLEAN:
+		cout << "Processador: Booleano" << endl;
+		queryProcessor = new BooleanProcessor(vocabularyFileName, urlsFileName,
+				invertedFileName);
+		break;
+
+	case QueryProcessor::VECTOR_SPACE:
+		cout << "Processador: Espaço Vetorial" << endl;
+		queryProcessor = new VectorSpaceProcessor(vocabularyFileName,
+				urlsFileName, invertedFileName, -1, -1);
+		break;
+
+		//	case QueryProcessor::BM25:
+		//		break;
+		//
+		//	case QueryProcessor::HYBRID:
+		//		break;
+		//
+		//	case QueryProcessor::MY_MODEL:
+		//		break;
+
+	default:
+		cerr << "|ERRO|\tInforme um modelo válido:";
+		cerr
+				<< "\n\t(1) Boolean;\n\t(2) Vetorial;\n\t(3) BM-25;\n\t(4) Híbrido Vetorial/BM-25;\n\t(5) Novo modelo.\n\n";
+		return 1;
+	}
 
 	while (true) {
 		vector<string> input;
-		set<string> words;
-		set<string> docs;
+		vector<string> words;
+		vector<string> docs;
 
 		docs.clear();
 
@@ -55,38 +70,24 @@ int processQueries() {
 		cout << "\nBuscar >> ";
 		getline(cin, query);
 
+		Util::changeCharSet("UTF-8", "ASCII//TRANSLIT", query);
 		Util::tokenize(query, input, " ", true);
 
-		if (input.size() == 1 && input[0] == "quit")
+		if (input.size() == 0)
 			break;
 
-		vector<string>::iterator inputIter;
-		for (inputIter = input.begin(); inputIter != input.end(); inputIter++) {
-			if (*inputIter == "and") {
-				if ((++inputIter) != input.end()) {
-					set<string> singleTermResult;
-					queryProcessor.querySingleTerm(*inputIter, singleTermResult);
-					resultsIntersection(docs, singleTermResult, docs);
-				}
+		queryProcessor->query(input, docs);
 
-			} else if (*inputIter == "or") {
-				if ((++inputIter) != input.end()) {
-					set<string> singleTermResult;
-					queryProcessor.querySingleTerm(*inputIter, singleTermResult);
-					resultsUnion(docs, singleTermResult, docs);
-				}
+		cout << "\n" << docs.size() << " Resultados:\n\n";
 
-			} else {
-				queryProcessor.querySingleTerm(*inputIter, docs);
-			}
-		}
-
-		cout << "\nResultados:\n\n";
-
-		set<string>::iterator docsIter;
+		vector<string>::iterator docsIter;
 		for (docsIter = docs.begin(); docsIter != docs.end(); docsIter++) {
 			cout << "\t" << *docsIter << endl;
 		}
+	}
+
+	if (queryProcessor != NULL) {
+		delete queryProcessor;
 	}
 
 	return 0;
@@ -94,11 +95,13 @@ int processQueries() {
 
 int indexCollection(string *collectionDirectory,
 		string *collectionIndexFileName, string *tempFileNamePrefix,
-		string *indexFileName, int runSize) {
+		string *indexFileName, int runSize, int maxNumTriples,
+		string *executionDir) {
 	cout << "\n*** INDEXAÇÃO DE COLEÇÃO ***\n";
 
 	Indexer indexer(*collectionDirectory, *collectionIndexFileName,
-			*tempFileNamePrefix, *indexFileName, runSize);
+			*tempFileNamePrefix, *indexFileName, runSize, maxNumTriples,
+			*executionDir);
 	int ret = indexer.index();
 
 	delete collectionDirectory;
@@ -117,11 +120,12 @@ int main(int argc, char **argv) {
 		int mode = atoi(argv[1]);
 
 		if (mode == 1) {
-			exit(processQueries());
+			exit(processQueries(atoi(argv[2])));
 
 		} else if (mode == 2) {
 			exit(indexCollection(new string(argv[2]), new string(argv[3]),
-					new string(argv[4]), new string(argv[5]), atoi(argv[6])));
+					new string(argv[4]), new string(argv[5]), atoi(argv[6]),
+					atoi(argv[7]), new string(argv[8])));
 
 		} else {
 			cerr << "|ERRO|\tInforme um dos modos como parâmetro do programa:";

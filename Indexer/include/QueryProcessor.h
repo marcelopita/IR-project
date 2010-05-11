@@ -19,35 +19,27 @@ class QueryProcessor {
 
 public:
 
+	enum Model {
+		BOOLEAN = 1, VECTOR_SPACE = 2, BM25 = 3, HYBRID = 4, MY_MODEL = 5
+	};
+
+	enum QueryResult {
+		FAILURE = 0, SUCCESS = 1
+	};
+
 	QueryProcessor(string&, string&, string&);
 
-	~QueryProcessor();
+	virtual QueryResult query(vector<string>&, vector<string>&) = 0;
 
-	//	void query(set<string>&, int, set<string>&);
-
-	void querySingleTerm(string&, set<string>&);
-
-	//	const static int AND = 0;
-	//
-	//	const static int OR = 1;
-
-private:
+protected:
 
 	map<string, int> vocabulary;
+
+	vector<int> docsSizes;
 
 	vector<string> urls;
 
 	string indexFileNamePrefix;
-
-	//	void getDocsAllWords(set<int>&, set<int>&);
-	//
-	//	void getDocsSomeWord(set<int>&, set<int>&);
-
-	int changeCharSet(const string&, const string&, string&);
-
-	//	void unionOp(set<set<int> >&, set<int>&);
-	//
-	//	void intersectionOp(set<set<int> >&, set<int>&);
 
 };
 
